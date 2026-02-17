@@ -1,0 +1,9 @@
+/* Minimal styles for Vaaniverse UI */
+body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; }
+h1 { color: #2b2b2b; }
+form { margin: 8px 0; }
+table { width: 100%; }
+th { background: #f4f4f6; text-align: left; }
+tr:nth-child(even) { background: #fbfbfb; }
+button { padding: 6px 10px; margin-left:6px; }
+#jobs-table { margin-top: 8px; }

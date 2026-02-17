@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Vaaniverse AI — Demo</title>
+    <style>body{font-family:Segoe UI,Arial;padding:20px;}</style>
+  </head>
+  <body>
+    <h1>Vaaniverse AI — Demo</h1>
+
+    <h2>Translate</h2>
+    <form action="/translate" method="post">
+      <textarea name="text" rows="2" cols="60">{{ translate_input or 'Hello' }}</textarea><br/>
+      src: <input name="src" value="auto"> tgt: <input name="tgt" value="hi">
+      <button type="submit">Translate</button>
+    </form>
+    {% if translate_result %}
+    <div><strong>Result:</strong> {{ translate_result }}</div>
+    {% endif %}
+
+    <h2>Speak (TTS)</h2>
+    <form action="/speak" method="post">
+      <input name="text" value="Namaste from Vaaniverse"> lang: <input name="lang" value="hi">
+      <button type="submit">Speak / Download</button>
+    </form>
+
+    <h2>Synthesize (model-backed)</h2>
+    <form action="/synthesize" method="post">
+      <input name="text" value="Hello from Vaaniverse (synth)"> backend:
+      <select name="backend">
+        {% for b in backends %}
+        <option value="{{ b }}">{{ b }}</option>
+        {% endfor %}
+      </select>
+      model: <input name="model" value="{{ coqui_model or '' }}">
+      <button type="submit">Synthesize</button>
+    </form>
+    <form action="/enqueue-synthesize" method="post" style="margin-top:8px">
+      <input name="text" value="Hello (enqueue)"> backend:
+      <select name="backend">
+        {% for b in backends %}
+        <option value="{{ b }}">{{ b }}</option>
+        {% endfor %}
+      </select>
+      model: <input name="model" value="{{ coqui_model or '' }}">
+      <button type="submit">Enqueue Synthesize</button>
+    </form>
+    {% if synth_error %}
+      <div style="color:darkred">Synth error: {{ synth_error }}</div>
+    {% endif %}
+
+    <h2>Generate Song</h2>
+    <form action="/generate-song" method="post">
+      theme: <input name="theme" value="love"> lang: <input name="lang" value="hi"> <label><input type="checkbox" name="save"> Save</label>
+      <button type="submit">Generate</button>
+    </form>
+    {% if song %}
+      <h3>Lyrics</h3>
+      <pre>{{ song['lyrics'] }}</pre>
+      <h4>Melody</h4>
+      <div>{{ song['melody'] }}</div>
+      {% if saved %}
+        <div>Saved files: {{ saved }}</div>
+      {% endif %}
+    {% endif %}
+
+    <h2>Clone Voice (consent required)</h2>
+    <form action="/clone-voice" method="post" enctype="multipart/form-data">
+      File: <input type="file" name="file"> Name: <input name="name" value="myvoice"> Consent: <input type="checkbox" name="consent">
+      <div style="font-size:small;color:gray">Check consent to create a signed consent artifact for this sample (recommended).</div>
+      <button type="submit">Clone (placeholder)</button>
+    </form>
+    {% if clone_out %}
+      <div>Clone metadata created: {{ clone_out }}</div>
+    {% endif %}
+    {% if clone_error %}
+      <div style="color:darkred">Error: {{ clone_error }}</div>
+    {% endif %}
+
+    <h2>Recorded Consents</h2>
+    {% if consents %}
+      <table id="jobs-table" border="1" cellpadding="4" style="border-collapse:collapse">
+        <tr><th>File</th><th>Signer</th><th>Sample</th><th>Timestamp</th><th>Verified</th></tr>
+        {% for c in consents %}
+        <tr>
+          <td>{{ c.path }}</td>
+          <td>{{ c.payload.signer }}</td>
+          <td>{{ c.payload.sample }}</td>
+          <td>{{ c.payload.timestamp }}</td>
+          <td>{{ c.verified }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <div>No consent artifacts found.</div>
+    {% endif %}
+
+    <h2>Jobs</h2>
+    <div style="font-size:small;color:gray">Background jobs are processed by an in-process worker. This is for demo only.</div>
+    {% if consents %}
+      <div style="margin-top:6px">
+        <a href="/">Refresh</a>
+      </div>
+    {% endif %}
+    <div style="margin-top:8px">
+        <table border="1" cellpadding="4" style="border-collapse:collapse">
+          <tr><th>Job ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Result</th></tr>
+          {% for jid, job in jobs.items() %}
+          <tr>
+            <td>{{ jid }}</td>
+            <td>{{ job['type'] }}</td>
+            <td>{{ job['status'] }}</td>
+            <td>{{ job.get('progress','') }}</td>
+            <td>{% if job['result'] %}{{ job['result'] }}{% else %}--{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </table>
+
+      <h3>Download Model</h3>
+      <form method="post" action="/enqueue-download-model">
+        <label>Model id (HuggingFace repo): <input name="model_id" required></label>
+        <button type="submit">Enqueue Download</button>
+      </form>
+    
+      <script>
+      (function(){
+        const table = document.getElementById('jobs-table');
+        if(!window.EventSource) return;
+        const es = new EventSource('/job-stream');
+        es.onmessage = function(e){
+          try{
+            const jobs = JSON.parse(e.data);
+            let html = '<tr><th>Job ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Result</th></tr>';
+            for(const jid of Object.keys(jobs)){
+              const job = jobs[jid];
+              const progress = job.progress || '';
+              const result = job.result || '--';
+              html += `<tr><td>${jid}</td><td>${job.type}</td><td>${job.status}</td><td>${progress}</td><td>${result}</td></tr>`;
+            }
+            table.innerHTML = html;
+          }catch(err){
+            console.error('Job stream parse error', err);
+          }
+        };
+      })();
+      </script>
+    </div>
+
+  </body>
+</html>

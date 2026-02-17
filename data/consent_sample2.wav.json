@@ -1,0 +1,8 @@
+{
+  "signer": "Signer",
+  "timestamp": "2026-02-17T07:30:09.931941Z",
+  "sample": "sample2.wav",
+  "sample_hash": "7f0ef520d7eff3021f7f48e32b1cf8c8a7d731a87ecf242475ba0660c3e5bf71",
+  "notes": "",
+  "hmac": "6d084d3c8e2f32c908ea024dbd39e9b3658088910491e172f01cd225548e414d"
+}
