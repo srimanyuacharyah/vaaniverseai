@@ -1,31 +1,48 @@
-import pyttsx3
+"""Text-to-speech module.
+
+Primary backend: **edge-tts** (300+ voices, no API key).
+Fallback backend: **pyttsx3** (offline, limited voices).
+"""
+from __future__ import annotations
+
+import os
 from typing import Optional
 
-engine = None
+# -- edge-tts (primary) --
+from . import edge_tts_engine
+
+# -- pyttsx3 (fallback) --
+_pyttsx3_engine = None
+try:
+    import pyttsx3
+except Exception:
+    pyttsx3 = None
 
 
-def _get_engine():
-    global engine
-    if engine is None:
-        engine = pyttsx3.init()
-    return engine
+def _get_pyttsx3():
+    global _pyttsx3_engine
+    if _pyttsx3_engine is None and pyttsx3 is not None:
+        _pyttsx3_engine = pyttsx3.init()
+    return _pyttsx3_engine
 
 
 def list_voices():
     """Return available voices from the TTS engine."""
-    e = _get_engine()
-    return e.getProperty('voices')
+    if edge_tts_engine.is_available():
+        return edge_tts_engine.list_voices()
+    e = _get_pyttsx3()
+    if e:
+        return e.getProperty('voices')
+    return []
 
 
 def _select_voice_for_lang(lang: str) -> Optional[str]:
-    """Select a voice id that appears to match `lang` (ISO 639-1 or name).
-
-    This is a heuristic: it checks voice names and reported languages.
-    """
-    if not lang:
+    """Select a pyttsx3 voice id that matches *lang*."""
+    e = _get_pyttsx3()
+    if e is None:
         return None
     lang = lang.lower()
-    for v in list_voices():
+    for v in (e.getProperty('voices') or []):
         try:
             langs = [l.decode() if isinstance(l, bytes) else l for l in v.languages]
         except Exception:
@@ -39,15 +56,38 @@ def _select_voice_for_lang(lang: str) -> Optional[str]:
     return None
 
 
-def speak(text: str, lang: str = 'en', out_path: Optional[str] = None) -> None:
-    """Speak `text` using the local TTS engine.
+def speak(
+    text: str,
+    lang: str = 'en',
+    out_path: Optional[str] = None,
+    gender: str = 'female',
+    voice: Optional[str] = None,
+    backend: str = 'auto',
+) -> Optional[str]:
+    """Speak *text*.  If *out_path* is given, save audio and return the path.
 
-    If `out_path` is provided, save audio to that file using `engine.save_to_file`.
-    Note: quality and language coverage depend on installed system voices.
+    *backend* can be ``'edge'``, ``'local'`` (pyttsx3), or ``'auto'``
+    (try edge-tts first, then pyttsx3).
     """
     if not text:
-        return
-    e = _get_engine()
+        return None
+
+    use_edge = backend in ('edge', 'auto') and edge_tts_engine.is_available()
+
+    if use_edge:
+        try:
+            if out_path is None:
+                out_path = f"spoken_{os.getpid()}.mp3"
+            return edge_tts_engine.speak(text, lang=lang, gender=gender, voice=voice, out_path=out_path)
+        except Exception:
+            if backend == 'edge':
+                raise
+            # fall through to pyttsx3
+
+    # pyttsx3 fallback
+    e = _get_pyttsx3()
+    if e is None:
+        raise RuntimeError("No TTS backend available. Install edge-tts or pyttsx3.")
     voice_id = _select_voice_for_lang(lang)
     if voice_id:
         try:
@@ -57,18 +97,17 @@ def speak(text: str, lang: str = 'en', out_path: Optional[str] = None) -> None:
     if out_path:
         e.save_to_file(text, out_path)
         e.runAndWait()
+        return out_path
     else:
         e.say(text)
         e.runAndWait()
+        return None
 
 
-def speak_styled(text: str, style: str = None, lang: str = 'en', out_path: Optional[str] = None) -> None:
+def speak_styled(text: str, style: str = None, lang: str = 'en', out_path: Optional[str] = None) -> Optional[str]:
     """Speak text with a simple style preset.
 
-    Style presets are lightweight adjustments (rate, volume). This is NOT
-    voice cloning or impersonation. Requests to mimic specific public figures
-    will be refused by higher-level code; use neutral `legend-inspired` styles
-    instead.
+    Style presets are lightweight adjustments.  This is NOT voice cloning.
     """
     presets = {
         'energetic': {'rate': 180, 'volume': 1.0},
@@ -80,14 +119,6 @@ def speak_styled(text: str, style: str = None, lang: str = 'en', out_path: Optio
         return speak(text, lang=lang, out_path=out_path)
     if style.lower() in ('spb', 'rajnikanth', 'sudeepa'):
         raise ValueError('Impersonation of public figures is not allowed.')
-    preset = presets.get(style, presets['legend-inspired'])
-    e = _get_engine()
-    # apply preset
-    try:
-        e.setProperty('rate', preset['rate'])
-        e.setProperty('volume', preset['volume'])
-    except Exception:
-        pass
-    # delegate to speak (which will select voice by lang)
-    speak(text, lang=lang, out_path=out_path)
-
+    # edge-tts does not support rate/volume presets in the same way, use it
+    # directly for better quality
+    return speak(text, lang=lang, out_path=out_path)

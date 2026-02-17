@@ -1,150 +1,805 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Vaaniverse AI — Demo</title>
-    <style>body{font-family:Segoe UI,Arial;padding:20px;}</style>
-  </head>
-  <body>
-    <h1>Vaaniverse AI — Demo</h1>
+<html lang="en">
 
-    <h2>Translate</h2>
-    <form action="/translate" method="post">
-      <textarea name="text" rows="2" cols="60">{{ translate_input or 'Hello' }}</textarea><br/>
-      src: <input name="src" value="auto"> tgt: <input name="tgt" value="hi">
-      <button type="submit">Translate</button>
-    </form>
-    {% if translate_result %}
-    <div><strong>Result:</strong> {{ translate_result }}</div>
-    {% endif %}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Vaaniverse AI — Voice & Song Intelligence</title>
+  <meta name="description"
+    content="AI-powered multilingual voice translation, song generation, and text-to-speech for Indian languages">
+  <link rel="stylesheet" href="/static/style.css">
+  <meta name="theme-color" content="#0a0a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
 
-    <h2>Speak (TTS)</h2>
-    <form action="/speak" method="post">
-      <input name="text" value="Namaste from Vaaniverse"> lang: <input name="lang" value="hi">
-      <button type="submit">Speak / Download</button>
-    </form>
+<body>
 
-    <h2>Synthesize (model-backed)</h2>
-    <form action="/synthesize" method="post">
-      <input name="text" value="Hello from Vaaniverse (synth)"> backend:
-      <select name="backend">
-        {% for b in backends %}
-        <option value="{{ b }}">{{ b }}</option>
-        {% endfor %}
-      </select>
-      model: <input name="model" value="{{ coqui_model or '' }}">
-      <button type="submit">Synthesize</button>
-    </form>
-    <form action="/enqueue-synthesize" method="post" style="margin-top:8px">
-      <input name="text" value="Hello (enqueue)"> backend:
-      <select name="backend">
-        {% for b in backends %}
-        <option value="{{ b }}">{{ b }}</option>
-        {% endfor %}
-      </select>
-      model: <input name="model" value="{{ coqui_model or '' }}">
-      <button type="submit">Enqueue Synthesize</button>
-    </form>
-    {% if synth_error %}
-      <div style="color:darkred">Synth error: {{ synth_error }}</div>
-    {% endif %}
+  <!-- ═══ Header ═══ -->
+  <div class="header">
+    <h1>🎙 Vaaniverse AI</h1>
+    <p>AI-powered multilingual voice translation, song generation &amp; text-to-speech for Indian languages</p>
+    <span class="badge">✨ 10+ INDIAN LANGUAGES • 300+ VOICES</span>
+  </div>
 
-    <h2>Generate Song</h2>
-    <form action="/generate-song" method="post">
-      theme: <input name="theme" value="love"> lang: <input name="lang" value="hi"> <label><input type="checkbox" name="save"> Save</label>
-      <button type="submit">Generate</button>
-    </form>
-    {% if song %}
-      <h3>Lyrics</h3>
-      <pre>{{ song['lyrics'] }}</pre>
-      <h4>Melody</h4>
-      <div>{{ song['melody'] }}</div>
-      {% if saved %}
-        <div>Saved files: {{ saved }}</div>
-      {% endif %}
-    {% endif %}
+  <!-- ═══ Tab Navigation ═══ -->
+  <nav class="tab-nav" id="tabNav">
+    <button class="tab-btn active" data-tab="translate" onclick="switchTab('translate')">🌐 Translate</button>
+    <button class="tab-btn" data-tab="tts" onclick="switchTab('tts')">🔊 TTS</button>
+    <button class="tab-btn" data-tab="voice-translate" onclick="switchTab('voice-translate')">🗣️ Voice</button>
+    <button class="tab-btn" data-tab="song" onclick="switchTab('song')">🎵 Song</button>
+    <button class="tab-btn" data-tab="clone" onclick="switchTab('clone')">🎤 Clone</button>
+  </nav>
 
-    <h2>Clone Voice (consent required)</h2>
-    <form action="/clone-voice" method="post" enctype="multipart/form-data">
-      File: <input type="file" name="file"> Name: <input name="name" value="myvoice"> Consent: <input type="checkbox" name="consent">
-      <div style="font-size:small;color:gray">Check consent to create a signed consent artifact for this sample (recommended).</div>
-      <button type="submit">Clone (placeholder)</button>
-    </form>
-    {% if clone_out %}
-      <div>Clone metadata created: {{ clone_out }}</div>
-    {% endif %}
-    {% if clone_error %}
-      <div style="color:darkred">Error: {{ clone_error }}</div>
-    {% endif %}
+  <div class="container">
 
-    <h2>Recorded Consents</h2>
-    {% if consents %}
-      <table id="jobs-table" border="1" cellpadding="4" style="border-collapse:collapse">
-        <tr><th>File</th><th>Signer</th><th>Sample</th><th>Timestamp</th><th>Verified</th></tr>
-        {% for c in consents %}
-        <tr>
-          <td>{{ c.path }}</td>
-          <td>{{ c.payload.signer }}</td>
-          <td>{{ c.payload.sample }}</td>
-          <td>{{ c.payload.timestamp }}</td>
-          <td>{{ c.verified }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    {% else %}
-      <div>No consent artifacts found.</div>
-    {% endif %}
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 1 — TRANSLATE
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="tab-translate">
+      <div class="card">
+        <div class="card-title"><span class="icon">🌐</span> Multi-Language Translator</div>
+        <p class="card-desc">Translate text between English and 10+ Indian languages instantly.</p>
 
-    <h2>Jobs</h2>
-    <div style="font-size:small;color:gray">Background jobs are processed by an in-process worker. This is for demo only.</div>
-    {% if consents %}
-      <div style="margin-top:6px">
-        <a href="/">Refresh</a>
+        <div class="form-group">
+          <label>Enter text</label>
+          <textarea id="translate-text"
+            placeholder="Type something in any language...">Hello, welcome to Vaaniverse AI!</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Source Language</label>
+            <select id="translate-src">
+              <option value="auto">Auto-Detect</option>
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target Language</label>
+            <select id="translate-tgt">
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="doTranslate()">
+            <span class="spinner"></span>
+            <span class="btn-text">🌐 Translate</span>
+          </button>
+          <button class="btn btn-secondary" onclick="doBatchTranslate()">
+            All Languages
+          </button>
+        </div>
+
+        <div class="result-box" id="translate-result">
+          <div class="result-label">Translation</div>
+          <div class="result-text" id="translate-output"></div>
+        </div>
+
+        <div class="result-box" id="batch-result">
+          <div class="result-label">All Translations</div>
+          <div class="result-text" id="batch-output"></div>
+        </div>
       </div>
-    {% endif %}
-    <div style="margin-top:8px">
-        <table border="1" cellpadding="4" style="border-collapse:collapse">
-          <tr><th>Job ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Result</th></tr>
-          {% for jid, job in jobs.items() %}
-          <tr>
-            <td>{{ jid }}</td>
-            <td>{{ job['type'] }}</td>
-            <td>{{ job['status'] }}</td>
-            <td>{{ job.get('progress','') }}</td>
-            <td>{% if job['result'] %}{{ job['result'] }}{% else %}--{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </table>
-
-      <h3>Download Model</h3>
-      <form method="post" action="/enqueue-download-model">
-        <label>Model id (HuggingFace repo): <input name="model_id" required></label>
-        <button type="submit">Enqueue Download</button>
-      </form>
-    
-      <script>
-      (function(){
-        const table = document.getElementById('jobs-table');
-        if(!window.EventSource) return;
-        const es = new EventSource('/job-stream');
-        es.onmessage = function(e){
-          try{
-            const jobs = JSON.parse(e.data);
-            let html = '<tr><th>Job ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Result</th></tr>';
-            for(const jid of Object.keys(jobs)){
-              const job = jobs[jid];
-              const progress = job.progress || '';
-              const result = job.result || '--';
-              html += `<tr><td>${jid}</td><td>${job.type}</td><td>${job.status}</td><td>${progress}</td><td>${result}</td></tr>`;
-            }
-            table.innerHTML = html;
-          }catch(err){
-            console.error('Job stream parse error', err);
-          }
-        };
-      })();
-      </script>
     </div>
 
-  </body>
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 2 — TEXT TO SPEECH
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-tts">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔊</span> Text-to-Speech</div>
+        <p class="card-desc">Convert text to natural-sounding speech in Indian languages using AI voices.</p>
+
+        <div class="form-group">
+          <label>Text to speak</label>
+          <textarea id="tts-text"
+            placeholder="Enter text to convert to speech...">नमस्ते, वानीवर्स एआई में आपका स्वागत है!</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Language</label>
+            <select id="tts-lang">
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Voice</label>
+            <select id="tts-gender">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Backend</label>
+            <select id="tts-backend">
+              {% for b in backends %}
+              <option value="{{ b }}">{{ b | capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="doSpeak()">
+          <span class="spinner"></span>
+          <span class="btn-text">🔊 Generate Speech</span>
+        </button>
+
+        <div class="status" id="tts-status"></div>
+        <div class="audio-player" id="tts-player" style="display:none">
+          <audio controls id="tts-audio"></audio>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 3 — VOICE TRANSLATION
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-voice-translate">
+      <!-- Mode selector -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🗣️</span> Voice Translation</div>
+        <p class="card-desc">Translate text or your own voice recording into another language and hear it spoken!</p>
+
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setVTMode('text')" id="vt-mode-text">📝 Type Text</button>
+          <button class="mode-btn" onclick="setVTMode('audio')" id="vt-mode-audio">🎙️ Upload Audio</button>
+        </div>
+
+        <!-- Text input mode -->
+        <div id="vt-text-mode">
+          <div class="form-group">
+            <label>Enter text to translate & speak</label>
+            <textarea id="vt-text"
+              placeholder="e.g. Hello, how are you? I am from India.">Hello, how are you? I am very happy to meet you today.</textarea>
+          </div>
+        </div>
+
+        <!-- Audio upload mode -->
+        <div id="vt-audio-mode" style="display:none">
+          <div class="form-group">
+            <label>Upload your voice recording (any audio format)</label>
+            <div class="upload-zone" id="vt-upload-zone">
+              <input type="file" id="vt-file"
+                accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a,.aac,.wma,.aiff,.opus,.webm,.amr" onchange="onVTFileSelect()">
+              <div class="upload-label" id="vt-upload-label">
+                <span style="font-size:2rem">🎙️</span><br>
+                <strong>Tap to upload</strong> or drag & drop<br>
+                <small>All audio formats supported</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Source Language</label>
+            <select id="vt-src">
+              <option value="auto">Auto-Detect</option>
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='en' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target Language</label>
+            <select id="vt-tgt">
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='kn' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Voice</label>
+            <select id="vt-gender">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="doVoiceTranslate()">
+          <span class="spinner"></span>
+          <span class="btn-text">🗣️ Translate & Speak</span>
+        </button>
+
+        <div class="status" id="vt-status"></div>
+
+        <div class="result-box" id="vt-transcribed-result" style="display:none">
+          <div class="result-label">🎙️ Transcribed Text</div>
+          <div class="result-text" id="vt-transcribed"></div>
+        </div>
+
+        <div class="result-box" id="vt-result">
+          <div class="result-label">🌐 Translated Text</div>
+          <div class="result-text" id="vt-translated"></div>
+        </div>
+        <div class="audio-player" id="vt-player" style="display:none">
+          <audio controls id="vt-audio"></audio>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">ℹ️</span> How It Works</div>
+        <p class="card-desc" style="margin-bottom:0">
+          <strong>Text mode:</strong> Type text → translated → spoken in target language.<br>
+          <strong>Audio mode:</strong> Upload a recording → your speech is transcribed → translated → spoken in target
+          language.<br><br>
+          <em>Supports: Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Urdu,
+            English.</em>
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 4 — SONG GENERATOR
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-song">
+      <div class="card">
+        <div class="card-title"><span class="icon">🎵</span> AI Song Generator</div>
+        <p class="card-desc">Generate song lyrics or write your own, then listen to them sung by AI voices. Full-length
+          tracks of 2–3 minutes!</p>
+
+        <!-- Mode selector -->
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setSongMode('generate')" id="song-mode-generate">🎲
+            Auto-Generate</button>
+          <button class="mode-btn" onclick="setSongMode('custom')" id="song-mode-custom">✍️ Custom Lyrics</button>
+        </div>
+
+        <!-- Auto-generate mode -->
+        <div id="song-generate-mode">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Theme</label>
+              <select id="song-theme">
+                <option value="love">💕 Love</option>
+                <option value="devotion">🙏 Devotion</option>
+                <option value="nature">🌿 Nature</option>
+                <option value="celebration">🎉 Celebration</option>
+                <option value="home">🏠 Home</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Language</label>
+              <select id="song-lang">
+                {% for code, name in languages.items() %}
+                <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Genre / Style Description <small>(optional — describe the vibe)</small></label>
+            <input type="text" id="song-genre-desc" placeholder="e.g. A soulful Bollywood ballad with romantic vibes">
+          </div>
+        </div>
+
+        <!-- Custom lyrics mode -->
+        <div id="song-custom-mode" style="display:none">
+          <div class="form-group">
+            <label>Write Your Own Lyrics</label>
+            <textarea id="song-custom-lyrics" rows="10"
+              placeholder="Write your song lyrics here... &#10;&#10;Example:&#10;Verse 1:&#10;Walking down the streets of Mumbai&#10;Lights are shining all around&#10;&#10;Chorus:&#10;This is our night, this is our song&#10;We'll dance until the dawn"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Speak Language</label>
+            <select id="song-custom-lang">
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Voice</label>
+            <select id="song-gender">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="song-audio-check" checked>
+          <label for="song-audio-check">Generate audio (2–3 minute AI voice track)</label>
+        </div>
+
+        <button class="btn btn-primary" onclick="doGenerateSong()">
+          <span class="spinner"></span>
+          <span class="btn-text">🎵 Generate Song</span>
+        </button>
+
+        <div class="status" id="song-status"></div>
+
+        <div class="result-box" id="song-result">
+          <div class="result-label">🎶 Lyrics</div>
+          <div class="result-text lyrics" id="song-lyrics"></div>
+          <div class="result-label" style="margin-top:16px">🎼 Melody</div>
+          <div class="melody-viz" id="melody-viz"></div>
+        </div>
+
+        <div class="audio-player" id="song-player" style="display:none">
+          <audio controls id="song-audio"></audio>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5 — VOICE CLONE -->
+    <div class="tab-panel" id="tab-clone">
+      <div class="card">
+        <div class="card-title"><span class="icon">🎤</span> Voice Clone <span class="lang-tag">Beta</span></div>
+        <p class="card-desc">Upload a voice sample to create a <strong>voice profile</strong>. The AI matches the
+          closest neural voice. <strong>Consent required.</strong></p>
+
+        <div class="form-group">
+          <label>Voice Sample (any audio format)</label>
+          <div class="upload-zone">
+            <input type="file" id="clone-file"
+              accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a,.aac,.wma,.aiff,.opus,.webm,.amr"
+              onchange="onCloneFileSelect()">
+            <div class="upload-label" id="clone-upload-label">
+              <span style="font-size:2rem">🎤</span><br>
+              <strong>Tap to upload</strong> or drag &amp; drop<br>
+              <small>All audio formats supported</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Voice Profile Name</label>
+          <input type="text" id="clone-name" value="myvoice" placeholder="e.g. myvoice">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Voice Language</label>
+            <select id="clone-lang">
+              {% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Voice Gender</label>
+            <select id="clone-gender">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="clone-consent">
+          <label for="clone-consent">I consent to voice cloning of this sample (required)</label>
+        </div>
+
+        <button class="btn btn-primary" onclick="doCloneVoice()">
+          <span class="spinner"></span>
+          <span class="btn-text">🎤 Create Voice Profile</span>
+        </button>
+
+        <div class="status" id="clone-status"></div>
+
+        <div class="result-box" id="clone-profile-result">
+          <div class="result-label">Voice Profile</div>
+          <div class="result-text" id="clone-profile-info"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🔊</span> Test Voice Profile</div>
+        <p class="card-desc">Type any text and hear it spoken using your cloned voice profile.</p>
+
+        <div class="form-group">
+          <label>Profile Name</label>
+          <input type="text" id="test-profile-name" value="myvoice" placeholder="e.g. myvoice">
+        </div>
+
+        <div class="form-group">
+          <label>Text to Speak</label>
+          <textarea id="test-profile-text"
+            placeholder="Type something to hear in your voice profile...">Hello, this is my cloned voice speaking!</textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="doTestProfile()">
+          <span class="spinner"></span>
+          <span class="btn-text">🔊 Speak with Profile</span>
+        </button>
+
+        <div class="status" id="test-profile-status"></div>
+        <div class="audio-player" id="test-profile-player" style="display:none">
+          <audio controls id="test-profile-audio"></audio>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Recorded Consents</div>
+        {% if consents %}
+        <div class="table-wrap">
+          <table>
+            <tr>
+              <th>Signer</th>
+              <th>Sample</th>
+              <th>Verified</th>
+            </tr>
+            {% for c in consents %}
+            <tr>
+              <td>{{ c.payload.signer }}</td>
+              <td>{{ c.payload.sample }}</td>
+              <td>{{ '✅' if c.verified else '❌' }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% else %}
+        <p class="card-desc" style="margin:0;color:var(--text-muted)">No consent artifacts found yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+
+  </div><!-- .container -->
+
+  <!-- ═══ Footer ═══ -->
+  <div class="footer">
+    <p>Vaaniverse AI — Multilingual Voice Intelligence for India 🇮🇳</p>
+    <p style="margin-top:4px">Do NOT use this to impersonate public figures without explicit written consent.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       JAVASCRIPT
+       ═══════════════════════════════════════════════════════════ -->
+  <script>
+    /* ── Tab switching ── */
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+    }
+
+    /* ── Helpers ── */
+    function showStatus(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'status visible ' + type;
+    }
+
+    function setLoading(btn, loading) {
+      if (loading) { btn.classList.add('loading'); btn.disabled = true; }
+      else { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+
+    /* ── Voice Translate mode toggle ── */
+    let vtMode = 'text';
+    function setVTMode(mode) {
+      vtMode = mode;
+      document.getElementById('vt-text-mode').style.display = mode === 'text' ? 'block' : 'none';
+      document.getElementById('vt-audio-mode').style.display = mode === 'audio' ? 'block' : 'none';
+      document.getElementById('vt-mode-text').classList.toggle('active', mode === 'text');
+      document.getElementById('vt-mode-audio').classList.toggle('active', mode === 'audio');
+    }
+
+    function onVTFileSelect() {
+      const f = document.getElementById('vt-file').files[0];
+      if (f) {
+        document.getElementById('vt-upload-label').innerHTML = '🎙️ <strong>' + f.name + '</strong><br><small>' + (f.size / 1024).toFixed(1) + ' KB</small>';
+      }
+    }
+
+    /* ── Song mode toggle ── */
+    let songMode = 'generate';
+    function setSongMode(mode) {
+      songMode = mode;
+      document.getElementById('song-generate-mode').style.display = mode === 'generate' ? 'block' : 'none';
+      document.getElementById('song-custom-mode').style.display = mode === 'custom' ? 'block' : 'none';
+      document.getElementById('song-mode-generate').classList.toggle('active', mode === 'generate');
+      document.getElementById('song-mode-custom').classList.toggle('active', mode === 'custom');
+    }
+
+    /* ── TRANSLATE ── */
+    async function doTranslate() {
+      const btn = event.currentTarget;
+      setLoading(btn, true);
+      const body = new FormData();
+      body.append('text', document.getElementById('translate-text').value);
+      body.append('src', document.getElementById('translate-src').value);
+      body.append('tgt', document.getElementById('translate-tgt').value);
+      try {
+        const res = await fetch('/translate', { method: 'POST', body });
+        const data = await res.json();
+        document.getElementById('translate-output').textContent = data.translated || data.error;
+        document.getElementById('translate-result').classList.add('visible');
+        document.getElementById('batch-result').classList.remove('visible');
+      } catch (e) {
+        document.getElementById('translate-output').textContent = 'Error: ' + e.message;
+        document.getElementById('translate-result').classList.add('visible');
+      }
+      setLoading(btn, false);
+    }
+
+    async function doBatchTranslate() {
+      const btn = event.currentTarget;
+      setLoading(btn, true);
+      const body = new FormData();
+      body.append('text', document.getElementById('translate-text').value);
+      try {
+        const res = await fetch('/batch-translate', { method: 'POST', body });
+        const data = await res.json();
+        let html = '';
+        for (const [lang, translated] of Object.entries(data.translations || {})) {
+          html += '<span class="lang-tag">' + lang + '</span> ' + translated + '\n\n';
+        }
+        document.getElementById('batch-output').innerHTML = html;
+        document.getElementById('batch-result').classList.add('visible');
+        document.getElementById('translate-result').classList.remove('visible');
+      } catch (e) {
+        document.getElementById('batch-output').textContent = 'Error: ' + e.message;
+        document.getElementById('batch-result').classList.add('visible');
+      }
+      setLoading(btn, false);
+    }
+
+    /* ── TTS ── */
+    async function doSpeak() {
+      const btn = event.currentTarget;
+      setLoading(btn, true);
+      showStatus('tts-status', '⏳ Generating speech...', 'info');
+      const body = new FormData();
+      body.append('text', document.getElementById('tts-text').value);
+      body.append('lang', document.getElementById('tts-lang').value);
+      body.append('gender', document.getElementById('tts-gender').value);
+      body.append('backend', document.getElementById('tts-backend').value);
+      try {
+        const res = await fetch('/speak', { method: 'POST', body });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        document.getElementById('tts-audio').src = url;
+        document.getElementById('tts-player').style.display = 'block';
+        document.getElementById('tts-audio').play();
+        showStatus('tts-status', '✅ Speech generated successfully!', 'success');
+      } catch (e) {
+        showStatus('tts-status', '❌ ' + e.message, 'error');
+      }
+      setLoading(btn, false);
+    }
+
+    /* ── VOICE TRANSLATE ── */
+    async function doVoiceTranslate() {
+      const btn = event.currentTarget;
+      setLoading(btn, true);
+
+      if (vtMode === 'audio') {
+        // Audio upload mode
+        const fileInput = document.getElementById('vt-file');
+        if (!fileInput.files.length) {
+          showStatus('vt-status', '⚠️ Please upload a voice recording first.', 'error');
+          setLoading(btn, false);
+          return;
+        }
+        showStatus('vt-status', '⏳ Transcribing, translating, and generating voice...', 'info');
+        const body = new FormData();
+        body.append('file', fileInput.files[0]);
+        body.append('src_lang', document.getElementById('vt-src').value);
+        body.append('tgt_lang', document.getElementById('vt-tgt').value);
+        body.append('gender', document.getElementById('vt-gender').value);
+        try {
+          const res = await fetch('/voice-translate-audio', { method: 'POST', body });
+          if (!res.ok) {
+            const d = await res.json();
+            if (d.transcribed) {
+              document.getElementById('vt-transcribed').textContent = d.transcribed;
+              document.getElementById('vt-transcribed-result').style.display = 'block';
+              document.getElementById('vt-transcribed-result').classList.add('visible');
+            }
+            if (d.translated) {
+              document.getElementById('vt-translated').textContent = d.translated;
+              document.getElementById('vt-result').classList.add('visible');
+            }
+            throw new Error(d.error);
+          }
+          const transcribed = res.headers.get('X-Transcribed-Text') || '';
+          const translated = res.headers.get('X-Translated-Text') || '';
+          if (transcribed) {
+            document.getElementById('vt-transcribed').textContent = transcribed;
+            document.getElementById('vt-transcribed-result').style.display = 'block';
+            document.getElementById('vt-transcribed-result').classList.add('visible');
+          }
+          document.getElementById('vt-translated').textContent = translated;
+          document.getElementById('vt-result').classList.add('visible');
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          document.getElementById('vt-audio').src = url;
+          document.getElementById('vt-player').style.display = 'block';
+          document.getElementById('vt-audio').play();
+          showStatus('vt-status', '✅ Voice translation complete!', 'success');
+        } catch (e) {
+          showStatus('vt-status', '❌ ' + e.message, 'error');
+        }
+      } else {
+        // Text mode
+        showStatus('vt-status', '⏳ Translating and generating voice...', 'info');
+        const body = new FormData();
+        body.append('text', document.getElementById('vt-text').value);
+        body.append('src_lang', document.getElementById('vt-src').value);
+        body.append('tgt_lang', document.getElementById('vt-tgt').value);
+        body.append('gender', document.getElementById('vt-gender').value);
+        try {
+          const res = await fetch('/voice-translate', { method: 'POST', body });
+          if (!res.ok) {
+            const d = await res.json();
+            document.getElementById('vt-translated').textContent = d.translated || '';
+            document.getElementById('vt-result').classList.add('visible');
+            throw new Error(d.error);
+          }
+          const translatedText = res.headers.get('X-Translated-Text') || '';
+          document.getElementById('vt-translated').textContent = translatedText;
+          document.getElementById('vt-result').classList.add('visible');
+          document.getElementById('vt-transcribed-result').style.display = 'none';
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          document.getElementById('vt-audio').src = url;
+          document.getElementById('vt-player').style.display = 'block';
+          document.getElementById('vt-audio').play();
+          showStatus('vt-status', '✅ Voice translation complete!', 'success');
+        } catch (e) {
+          showStatus('vt-status', '❌ ' + e.message, 'error');
+        }
+      }
+      setLoading(btn, false);
+    }
+
+    /* ── SONG GENERATOR ── */
+    async function doGenerateSong() {
+      const btn = event.currentTarget;
+      setLoading(btn, true);
+      showStatus('song-status', '⏳ Composing your song (this may take a moment for 2–3 min tracks)...', 'info');
+      const body = new FormData();
+      body.append('gender', document.getElementById('song-gender').value);
+      body.append('with_audio', document.getElementById('song-audio-check').checked ? 'on' : 'off');
+      body.append('full_length', 'on');
+
+      if (songMode === 'custom') {
+        body.append('custom_lyrics', document.getElementById('song-custom-lyrics').value);
+        body.append('lang', document.getElementById('song-custom-lang').value);
+        body.append('theme', 'love');
+      } else {
+        body.append('theme', document.getElementById('song-theme').value);
+        body.append('lang', document.getElementById('song-lang').value);
+        body.append('genre_description', document.getElementById('song-genre-desc').value);
+      }
+
+      try {
+        const res = await fetch('/generate-song', { method: 'POST', body });
+        const data = await res.json();
+        document.getElementById('song-lyrics').textContent = data.lyrics;
+        // melody visualization
+        const viz = document.getElementById('melody-viz');
+        viz.innerHTML = '';
+        (data.melody || []).forEach(note => {
+          const bar = document.createElement('div');
+          bar.className = 'melody-bar';
+          const h = ((note - 55) / 20) * 100;
+          bar.style.height = Math.max(8, Math.min(100, h)) + '%';
+          viz.appendChild(bar);
+        });
+        document.getElementById('song-result').classList.add('visible');
+
+        // audio
+        if (data.has_audio) {
+          const lang = songMode === 'custom'
+            ? document.getElementById('song-custom-lang').value
+            : document.getElementById('song-lang').value;
+          const audioRes = await fetch('/song-audio?lang=' + lang);
+          if (audioRes.ok) {
+            const blob = await audioRes.blob();
+            const url = URL.createObjectURL(blob);
+            document.getElementById('song-audio').src = url;
+            document.getElementById('song-player').style.display = 'block';
+          }
+        }
+        showStatus('song-status', '✅ Song generated!', 'success');
+      } catch (e) {
+        showStatus('song-status', '❌ ' + e.message, 'error');
+      }
+      setLoading(btn, false);
+    }
+
+    /* ── VOICE CLONE ── */
+    function onCloneFileSelect() {
+      const f = document.getElementById('clone-file').files[0];
+      if (f) {
+        document.getElementById('clone-upload-label').innerHTML = '🎤 <strong>' + f.name + '</strong><br><small>' + (f.size / 1024).toFixed(1) + ' KB</small>';
+      }
+    }
+
+    async function doCloneVoice() {
+      const btn = event.currentTarget;
+      const consent = document.getElementById('clone-consent').checked;
+      if (!consent) {
+        showStatus('clone-status', '⚠️ You must provide consent before cloning.', 'error');
+        return;
+      }
+      const fileInput = document.getElementById('clone-file');
+      if (!fileInput.files.length) {
+        showStatus('clone-status', '⚠️ Please upload a voice sample first.', 'error');
+        return;
+      }
+      setLoading(btn, true);
+      showStatus('clone-status', '⏳ Creating voice profile...', 'info');
+      const body = new FormData();
+      body.append('file', fileInput.files[0]);
+      body.append('name', document.getElementById('clone-name').value);
+      body.append('consent', 'on');
+      body.append('lang', document.getElementById('clone-lang').value);
+      body.append('gender', document.getElementById('clone-gender').value);
+      try {
+        const res = await fetch('/clone-voice', { method: 'POST', body });
+        const data = await res.json();
+        if (data.success) {
+          const p = data.profile || {};
+          const info = 'Profile: ' + (p.name || '') + '\n'
+            + 'Voice: ' + (p.edge_voice || '') + '\n'
+            + 'Language: ' + (p.language || '') + '\n'
+            + 'Gender: ' + (p.gender || '');
+          document.getElementById('clone-profile-info').textContent = info;
+          document.getElementById('clone-profile-result').classList.add('visible');
+          document.getElementById('test-profile-name').value = p.name || 'myvoice';
+          showStatus('clone-status', '✅ Voice profile created! Test it below.', 'success');
+        } else {
+          showStatus('clone-status', '❌ ' + data.error, 'error');
+        }
+      } catch (e) {
+        showStatus('clone-status', '❌ ' + e.message, 'error');
+      }
+      setLoading(btn, false);
+    }
+
+    async function doTestProfile() {
+      const btn = event.currentTarget;
+      const name = document.getElementById('test-profile-name').value;
+      const text = document.getElementById('test-profile-text').value;
+      if (!name || !text) {
+        showStatus('test-profile-status', '⚠️ Enter a profile name and text.', 'error');
+        return;
+      }
+      setLoading(btn, true);
+      showStatus('test-profile-status', '⏳ Speaking with profile...', 'info');
+      const body = new FormData();
+      body.append('name', name);
+      body.append('text', text);
+      try {
+        const res = await fetch('/speak-with-profile', { method: 'POST', body });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        document.getElementById('test-profile-audio').src = url;
+        document.getElementById('test-profile-player').style.display = 'block';
+        document.getElementById('test-profile-audio').play();
+        showStatus('test-profile-status', '✅ Playing with voice profile!', 'success');
+      } catch (e) {
+        showStatus('test-profile-status', '❌ ' + e.message, 'error');
+      }
+      setLoading(btn, false);
+    }
+  </script>
+
+</body>
+
 </html>

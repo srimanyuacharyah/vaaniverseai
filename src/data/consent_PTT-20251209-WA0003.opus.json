@@ -1,0 +1,8 @@
+{
+  "signer": "myvoice",
+  "timestamp": "2026-02-17T10:01:09.176569Z",
+  "sample": "PTT-20251209-WA0003.opus",
+  "sample_hash": "833c3b4eb7e26d8774ebeb4b5168bc5c9dd431a613370a5f828a95196485100c",
+  "notes": "Recorded via web UI",
+  "hmac": ""
+}

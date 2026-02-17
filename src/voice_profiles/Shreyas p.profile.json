@@ -1,0 +1,11 @@
+{
+  "name": "Shreyas p",
+  "sample_file": "voice_profiles\\Shreyas p_sample.m4a",
+  "original_sample": "uploads\\Tuesday, 3h28m pm.m4a",
+  "edge_voice": "kn-IN-GaganNeural",
+  "language": "kn",
+  "gender": "male",
+  "created_at": "2026-02-17T10:09:51.140982+00:00",
+  "consent_given": true,
+  "note": "This profile uses the closest-matching edge-tts neural voice. For true voice cloning, install Coqui TTS or RVC."
+}

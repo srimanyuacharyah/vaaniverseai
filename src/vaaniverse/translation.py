@@ -1,36 +1,64 @@
-"""Translation utilities.
+"""Translation utilities using deep-translator.
 
-This module tries to use `googletrans` when available. If importing or using it
-fails (dependency issues on some Python versions), the `translate` function
-falls back to a safe placeholder that prefixes the text with the target
-language code. Replace with a proper translation provider for production use.
+Uses ``deep-translator`` (GoogleTranslator) as the primary backend.
+Falls back to a placeholder when the library is unavailable or the
+request fails.
 """
-try:
-    from googletrans import Translator
-except Exception:
-    Translator = None
+from typing import Optional
 
-_translator = None
-if Translator is not None:
-    try:
-        _translator = Translator()
-    except Exception:
-        _translator = None
+_GoogleTranslator = None
+try:
+    from deep_translator import GoogleTranslator as _GoogleTranslator  # type: ignore
+except Exception:
+    pass
+
+# Supported Indian languages (ISO-639-1 codes)
+INDIAN_LANGUAGES = {
+    'hi': 'Hindi',
+    'kn': 'Kannada',
+    'ta': 'Tamil',
+    'te': 'Telugu',
+    'bn': 'Bengali',
+    'mr': 'Marathi',
+    'gu': 'Gujarati',
+    'ml': 'Malayalam',
+    'pa': 'Punjabi',
+    'ur': 'Urdu',
+}
+
+ALL_LANGUAGES = {
+    'en': 'English',
+    **INDIAN_LANGUAGES,
+}
 
 
 def translate(text: str, src: str = 'auto', tgt: str = 'hi') -> str:
-    """Translate `text` from `src` to `tgt` language codes (ISO 639-1).
+    """Translate *text* from *src* to *tgt* language codes (ISO 639-1).
 
-    If a real translator is not available, returns a placeholder string that
-    indicates the intended target language.
+    If a real translator is not available, returns a placeholder string.
     """
     if not text:
         return ""
-    if _translator is not None:
+    if _GoogleTranslator is not None:
         try:
-            res = _translator.translate(text, src=src, dest=tgt)
-            return res.text
+            t = _GoogleTranslator(source=src, target=tgt)
+            return t.translate(text)
         except Exception:
             return f"[{tgt}] {text}"
-    # Fallback placeholder
     return f"[{tgt}] {text}"
+
+
+def detect_and_translate(text: str, tgt: str = 'hi') -> dict:
+    """Auto-detect source language, translate to *tgt*, and return both."""
+    translated = translate(text, src='auto', tgt=tgt)
+    return {'original': text, 'translated': translated, 'target': tgt}
+
+
+def batch_translate(text: str, targets: list[str] | None = None) -> dict:
+    """Translate *text* into multiple target languages at once."""
+    if targets is None:
+        targets = list(INDIAN_LANGUAGES.keys())
+    results = {}
+    for tgt in targets:
+        results[tgt] = translate(text, src='auto', tgt=tgt)
+    return results
