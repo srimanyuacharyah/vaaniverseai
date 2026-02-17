@@ -18,6 +18,28 @@ docker build -t vaaniverseai:latest .
 docker run -p 8000:8000 vaaniverseai:latest
 ```
 
+Docker Compose (Redis + RQ worker)
+----------------------------------
+To run a simple compose stack with a Redis-backed worker for background jobs:
+
+```bash
+docker compose build
+docker compose up
+```
+
+This will start three services:
+- `web` — the FastAPI app on port 8000
+- `redis` — Redis server for RQ
+- `worker` — an RQ worker that executes jobs using the same codebase
+
+Notes:
+- Worker logs will appear in the `worker` service output. Jobs that were
+  enqueued via the web UI or CLI using the RQ adapter will be processed by
+  the worker service.
+- Ensure you have sufficient disk space for model downloads; models are
+  persisted under the mounted `./data` directory.
+
+
 Extending for production-quality voice cloning / singing:
 - Use dedicated models (Coqui TTS, VITS, Mellotron, etc.) and ensure licensing.
 - Implement a consent capture flow (record signed consent, store metadata, hashes).

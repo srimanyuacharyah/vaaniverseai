@@ -17,6 +17,11 @@ from typing import Any, Dict, Optional
 
 from .config import cfg
 from . import voice_models, tts, voice_clone, model_downloader
+# optional RQ adapter (imported lazily)
+try:
+    from . import rq_adapter
+except Exception:
+    rq_adapter = None
 
 
 class JobManager:
@@ -164,3 +169,39 @@ class JobManager:
 
 # Singleton manager
 manager = JobManager()
+
+
+def submit_job(job_type: str, params: Dict[str, Any]) -> str:
+    """Submit a job either to RQ (if enabled) or to the in-process manager.
+
+    When RQ is enabled via config, this will attempt to enqueue a worker
+    function by import path. Falls back to the in-process manager if RQ is
+    unavailable or disabled.
+    """
+    if getattr(cfg, 'use_rq', False) and rq_adapter is not None:
+        # Map job types to worker function paths and args
+        if job_type == 'synthesize':
+            func = 'vaaniverse.job_worker.process_synth'
+            args = ()
+            kwargs = params
+        elif job_type == 'clone':
+            func = 'vaaniverse.job_worker.process_clone'
+            args = (params.get('sample'), params.get('name'))
+            kwargs = {'consent': params.get('consent', False)}
+        elif job_type == 'download_model':
+            func = 'vaaniverse.job_worker.process_download_model'
+            args = (params.get('model_id'),)
+            kwargs = {'cache_dir': str(Path(cfg.data_dir))}
+        else:
+            # Unknown job types fall back to in-process manager
+            return manager.submit(job_type, params)
+
+        try:
+            jid = rq_adapter.enqueue(func, args=args, kwargs=kwargs)
+            return jid
+        except Exception:
+            # On failure, fall back to in-process manager
+            return manager.submit(job_type, params)
+
+    # Default: use in-process manager
+    return manager.submit(job_type, params)

@@ -112,7 +112,7 @@ def job_submit_synth(text: str, backend: str = 'local', model: str = '', out: st
     params = {'text': text, 'backend': backend, 'model': model, 'lang': lang}
     if out:
         params['out'] = out
-    job_id = job_queue.manager.submit('synthesize', params)
+    job_id = job_queue.submit_job('synthesize', params)
     typer.echo(f"Enqueued synth job: {job_id}")
 
 
@@ -120,13 +120,14 @@ def job_submit_synth(text: str, backend: str = 'local', model: str = '', out: st
 def job_submit_clone(sample: str, name: str, consent: bool = False):
     """Submit a background voice-clone job (consent required)."""
     params = {'sample': sample, 'name': name, 'consent': consent}
-    job_id = job_queue.manager.submit('clone', params)
+    job_id = job_queue.submit_job('clone', params)
     typer.echo(f"Enqueued clone job: {job_id}")
 
-    def job_submit_download(model_id: str):
-        """Submit a background model download job (HuggingFace repo id)."""
-        job = job_queue.manager.submit_job('download_model', {'model_id': model_id})
-        typer.echo(f"Submitted download job: {job['id']}")
+@app.command()
+def job_submit_download(model_id: str):
+    """Submit a background model download job (HuggingFace repo id)."""
+    job_id = job_queue.submit_job('download_model', {'model_id': model_id})
+    typer.echo(f"Enqueued download job: {job_id}")
 
 @app.command()
 def job_list():

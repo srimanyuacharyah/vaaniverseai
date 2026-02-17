@@ -16,6 +16,8 @@ class Config:
     coqui_model: str = os.environ.get('VAANIVERSE_COQUI_MODEL', '')
     # Directory to store downloaded models or generated files
     data_dir: str = os.environ.get('VAANIVERSE_DATA_DIR', 'data')
+    # Whether to use Redis+RQ for background jobs when available
+    use_rq: bool = os.environ.get('VAANIVERSE_USE_RQ', '0') in ('1', 'true', 'True')
 
 
 def _load_local_config():
@@ -37,6 +39,10 @@ if not Config.coqui_model:
     Config.coqui_model = os.environ.get('VAANIVERSE_COQUI_MODEL', _local.get('coqui_model', ''))
 if not Config.data_dir:
     Config.data_dir = os.environ.get('VAANIVERSE_DATA_DIR', _local.get('data_dir', 'data'))
+
+# allow local file to enable RQ
+if not Config.use_rq:
+    Config.use_rq = os.environ.get('VAANIVERSE_USE_RQ', str(_local.get('use_rq', '0'))) in ('1', 'true', 'True')
 
 
 cfg = Config()
