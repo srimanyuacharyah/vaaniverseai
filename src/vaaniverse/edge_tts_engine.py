@@ -134,10 +134,7 @@ def _build_singing_ssml(text: str, voice: str) -> str:
         if len(parts) >= 2:
             voice_lang = f"{parts[0]}-{parts[1]}"
 
-    ssml_parts.append(
-        f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
-        f'xml:lang="{voice_lang}">'
-    )
+    ssml_parts.append(f'<speak version="1.0" xml:lang="{voice_lang}">')
     ssml_parts.append(f'<voice name="{voice}">')
 
     pitch_idx = 0
@@ -194,9 +191,11 @@ def _build_singing_ssml(text: str, voice: str) -> str:
     return '\n'.join(ssml_parts)
 
 
-async def _speak_singing_async(ssml: str, voice: str, out_path: str) -> str:
+async def _speak_singing_async(ssml: str, out_path: str) -> str:
     """Synthesize SSML singing content."""
-    communicate = edge_tts.Communicate(ssml, voice)
+    # When passing full SSML (including <speak> and <voice> tags), 
+    # the 'voice' argument must be excluded to avoid double-wrapping.
+    communicate = edge_tts.Communicate(ssml)
     await communicate.save(out_path)
     return out_path
 
@@ -227,7 +226,7 @@ def speak_singing(
 
     # Try SSML first; fall back to plain prosody if SSML not supported
     try:
-        _run_sync(_speak_singing_async(ssml, v, out_path))
+        _run_sync(_speak_singing_async(ssml, out_path))
     except Exception:
         # Fallback: use plain text with global rate/pitch adjustments
         communicate_args = {'rate': '-15%', 'pitch': '+5Hz'}
