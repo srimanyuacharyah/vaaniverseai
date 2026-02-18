@@ -134,7 +134,10 @@ def _build_singing_ssml(text: str, voice: str) -> str:
         if len(parts) >= 2:
             voice_lang = f"{parts[0]}-{parts[1]}"
 
-    ssml_parts.append(f'<speak version="1.0" xml:lang="{voice_lang}">')
+    ssml_parts.append(
+        f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
+        f'xml:lang="{voice_lang}">'
+    )
     ssml_parts.append(f'<voice name="{voice}">')
 
     pitch_idx = 0
@@ -191,12 +194,33 @@ def _build_singing_ssml(text: str, voice: str) -> str:
     return '\n'.join(ssml_parts)
 
 
-async def _speak_singing_async(ssml: str, out_path: str) -> str:
-    """Synthesize SSML singing content."""
-    # When passing full SSML (including <speak> and <voice> tags), 
-    # the 'voice' argument must be excluded to avoid double-wrapping.
-    communicate = edge_tts.Communicate(ssml)
-    await communicate.save(out_path)
+async def speak_singing_async(
+    text: str,
+    lang: str = 'hi',
+    gender: str = 'female',
+    voice: Optional[str] = None,
+    out_path: Optional[str] = None,
+) -> str:
+    """Async version of speak_singing."""
+    if not is_available():
+        raise ImportError("edge-tts is not installed.")
+    if not text:
+        raise ValueError("text must not be empty")
+
+    v = voice or get_voice(lang, gender)
+    if out_path is None:
+        out_path = os.path.join(tempfile.gettempdir(), f"song_melodic_{os.getpid()}.mp3")
+
+    ssml = _build_singing_ssml(text, v)
+
+    try:
+        communicate = edge_tts.Communicate(ssml)
+        await communicate.save(out_path)
+    except Exception:
+        # Fallback: plain melodic synthesis
+        communicate = edge_tts.Communicate(text, v, rate='-15%', pitch='+5Hz')
+        await communicate.save(out_path)
+
     return out_path
 
 
@@ -207,32 +231,8 @@ def speak_singing(
     voice: Optional[str] = None,
     out_path: Optional[str] = None,
 ) -> str:
-    """Synthesize *text* as a **melodious song** with pitch & rate variations.
-
-    Uses SSML prosody tags to make the voice rise and fall like singing.
-    Each lyric line gets a different pitch offset; choruses are higher
-    and slower; pauses separate structural sections.
-    """
-    if not is_available():
-        raise ImportError("edge-tts is not installed. Run: pip install edge-tts")
-    if not text:
-        raise ValueError("text must not be empty")
-
-    v = voice or get_voice(lang, gender)
-    if out_path is None:
-        out_path = os.path.join(tempfile.gettempdir(), f"song_melodic_{os.getpid()}.mp3")
-
-    ssml = _build_singing_ssml(text, v)
-
-    # Try SSML first; fall back to plain prosody if SSML not supported
-    try:
-        _run_sync(_speak_singing_async(ssml, out_path))
-    except Exception:
-        # Fallback: use plain text with global rate/pitch adjustments
-        communicate_args = {'rate': '-15%', 'pitch': '+5Hz'}
-        _run_sync(_speak_plain_melodic(text, v, out_path, **communicate_args))
-
-    return out_path
+    """Sync wrapper for speak_singing_async."""
+    return _run_sync(speak_singing_async(text, lang=lang, gender=gender, voice=voice, out_path=out_path))
 
 
 async def _speak_plain_melodic(

@@ -125,17 +125,13 @@ def get_profile(name: str) -> Optional[dict]:
     return None
 
 
-def speak_with_profile(
+async def speak_with_profile_async(
     name: str,
     text: str,
     lang: Optional[str] = None,
     out_path: Optional[str] = None,
 ) -> str:
-    """Synthesize *text* using a saved voice profile.
-
-    Uses the edge-tts voice assigned to the profile.
-    Returns the audio file path.
-    """
+    """Async version of speak_with_profile."""
     profile = get_profile(name)
     if profile is None:
         raise ValueError(f"Voice profile '{name}' not found.")
@@ -147,4 +143,10 @@ def speak_with_profile(
         import tempfile
         out_path = os.path.join(tempfile.gettempdir(), f"clone_{name}_{os.getpid()}.mp3")
 
-    return edge_tts_engine.speak(text, lang=use_lang, voice=voice, out_path=out_path)
+    return await edge_tts_engine.speak_async(text, lang=use_lang, voice=voice, out_path=out_path)
+
+
+def speak_with_profile(*args, **kwargs) -> str:
+    """Sync wrapper for speak_with_profile_async."""
+    import asyncio
+    return edge_tts_engine._run_sync(speak_with_profile_async(*args, **kwargs))

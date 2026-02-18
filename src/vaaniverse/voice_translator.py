@@ -77,18 +77,14 @@ def transcribe_audio(audio_path: str, lang: str = 'auto') -> str:
     return text
 
 
-def translate_voice(
+async def translate_voice_async(
     text: str,
     src_lang: str = 'en',
     tgt_lang: str = 'hi',
     gender: str = 'female',
     out_path: Optional[str] = None,
 ) -> dict:
-    """Translate *text* and synthesize the result in the target language voice.
-
-    Returns a dict with keys: ``original``, ``translated``, ``audio_path``,
-    ``src_lang``, ``tgt_lang``.
-    """
+    """Async version of translate_voice."""
     translated = translation.translate(text, src=src_lang, tgt=tgt_lang)
 
     if out_path is None:
@@ -97,7 +93,7 @@ def translate_voice(
             f"voice_translate_{tgt_lang}_{os.getpid()}.mp3",
         )
 
-    audio = edge_tts_engine.speak(translated, lang=tgt_lang, gender=gender, out_path=out_path)
+    audio = await edge_tts_engine.speak_async(translated, lang=tgt_lang, gender=gender, out_path=out_path)
 
     return {
         'original': text,
@@ -108,27 +104,19 @@ def translate_voice(
     }
 
 
-def translate_voice_from_audio(
+async def translate_voice_from_audio_async(
     audio_path: str,
     src_lang: str = 'auto',
     tgt_lang: str = 'hi',
     gender: str = 'female',
     out_path: Optional[str] = None,
 ) -> dict:
-    """Full pipeline: audio → transcribe → translate → synthesize.
-
-    1. Transcribe the uploaded audio using Google Speech Recognition.
-    2. Translate the recognized text into *tgt_lang*.
-    3. Synthesize the translated text using edge-tts.
-
-    Returns a dict with keys: ``transcribed``, ``translated``,
-    ``audio_path``, ``src_lang``, ``tgt_lang``.
-    """
-    # Step 1 — transcribe
+    """Async version of translate_voice_from_audio."""
+    # Step 1 — transcribe (sync, as GSR is blocking but done in a thread by FastAPI/IO)
+    # Note: we could wrap this in a thread but for simplicity we keep it as is
     transcribed = transcribe_audio(audio_path, lang=src_lang)
 
     # Step 2 — translate
-    # Determine actual source for translation
     src = src_lang if src_lang != 'auto' else 'auto'
     translated = translation.translate(transcribed, src=src, tgt=tgt_lang)
 
@@ -138,7 +126,7 @@ def translate_voice_from_audio(
             tempfile.gettempdir(),
             f"voice_translate_audio_{tgt_lang}_{os.getpid()}.mp3",
         )
-    audio = edge_tts_engine.speak(translated, lang=tgt_lang, gender=gender, out_path=out_path)
+    audio = await edge_tts_engine.speak_async(translated, lang=tgt_lang, gender=gender, out_path=out_path)
 
     return {
         'transcribed': transcribed,
@@ -147,6 +135,16 @@ def translate_voice_from_audio(
         'src_lang': src_lang,
         'tgt_lang': tgt_lang,
     }
+
+
+def translate_voice(*args, **kwargs) -> dict:
+    """Sync wrapper."""
+    return edge_tts_engine._run_sync(translate_voice_async(*args, **kwargs))
+
+
+def translate_voice_from_audio(*args, **kwargs) -> dict:
+    """Sync wrapper."""
+    return edge_tts_engine._run_sync(translate_voice_from_audio_async(*args, **kwargs))
 
 
 def batch_translate_voice(

@@ -241,7 +241,7 @@ def generate_full_song(
     return {'lyrics': lyrics, 'melody': melody, 'theme': theme, 'lang': lang}
 
 
-def generate_song_audio(
+async def generate_song_audio_async(
     theme: str = 'love',
     lang: str = 'hi',
     lines: int = 4,
@@ -251,10 +251,7 @@ def generate_song_audio(
     genre_description: str = '',
     full_length: bool = False,
 ) -> Dict:
-    """Generate a song *and* produce an audio file.
-
-    When *full_length* is True, produces a 2–3 minute track.
-    """
+    """ASync version of generate_song_audio."""
     if full_length or custom_lyrics or genre_description:
         song = generate_full_song(
             theme=theme, lang=lang,
@@ -267,13 +264,29 @@ def generate_song_audio(
     if out_path is None:
         out_path = os.path.join(tempfile.gettempdir(), f"song_{lang}_{os.getpid()}.mp3")
     try:
-        # Synthesize the lyrics as a melodious song
-        audio = edge_tts_engine.speak_singing(song['lyrics'], lang=lang, gender=gender, out_path=out_path)
+        # Synthesize the lyrics as a melodious song (awaiting the async version)
+        audio = await edge_tts_engine.speak_singing_async(song['lyrics'], lang=lang, gender=gender, out_path=out_path)
         song['audio_path'] = audio
     except Exception as e:
         song['audio_path'] = None
         song['audio_error'] = str(e)
     return song
+
+
+def generate_song_audio(*args, **kwargs) -> Dict:
+    """Sync wrapper for generate_song_audio_async."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    if loop.is_running():
+        # This is a bit risky but we keep it for backward compatibility if someone calls it from sync
+        return edge_tts_engine._run_sync(generate_song_audio_async(*args, **kwargs))
+    else:
+        return loop.run_until_complete(generate_song_audio_async(*args, **kwargs))
 
 
 def save_song(song: Dict, prefix: str = 'song') -> Dict[str, str]:
