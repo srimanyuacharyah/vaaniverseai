@@ -63,11 +63,13 @@ def web_batch_translate(text: str = Form(...)):
     return JSONResponse({'original': text, 'translations': results})
 
 
+import tempfile
+
 # ── Text-to-Speech ──────────────────────────────────────────────────────────
 
 @app.post('/speak')
 async def web_speak(text: str = Form(...), lang: str = Form('hi'), gender: str = Form('female'), backend: str = Form('edge')):
-    out_path = f"spoken_{os.getpid()}.mp3"
+    out_path = os.path.join(tempfile.gettempdir(), f"spoken_{lang}_{os.getpid()}.mp3")
     try:
         if backend == 'edge':
             await edge_tts_engine.speak_async(text, lang=lang, out_path=out_path, gender=gender)
@@ -109,7 +111,7 @@ async def web_voice_translate_audio(
     gender: str = Form('female'),
 ):
     """Upload an audio file → transcribe → translate → re-speak."""
-    tmp = Path('uploads')
+    tmp = Path(tempfile.gettempdir()) / "vaaniverse_uploads"
     tmp.mkdir(exist_ok=True)
     dest = tmp / file.filename
     with open(dest, 'wb') as f:
@@ -144,7 +146,53 @@ async def web_voice_translate_text(
     return JSONResponse({'original': text, 'translated': translated, 'tgt_lang': tgt_lang})
 
 
-# ... (Song Generation handled above) ...
+# ── Song Generation ─────────────────────────────────────────────────────────
+
+@app.post('/generate-song')
+async def web_generate_song(
+    theme: str = Form('love'),
+    lang: str = Form('hi'),
+    gender: str = Form('female'),
+    with_audio: str = Form('on'),
+    custom_lyrics: str = Form(''),
+    genre_description: str = Form(''),
+    full_length: str = Form('on'),
+):
+    is_full = full_length == 'on'
+    has_custom = bool(custom_lyrics.strip()) or bool(genre_description.strip())
+
+    if with_audio == 'on':
+        song = await song_generator.generate_song_audio_async(
+            theme=theme, lang=lang, gender=gender,
+            custom_lyrics=custom_lyrics,
+            genre_description=genre_description,
+            full_length=(is_full or has_custom),
+        )
+    else:
+        song = song_generator.generate_full_song(
+            theme=theme, lang=lang,
+            custom_lyrics=custom_lyrics,
+            genre_description=genre_description,
+        )
+
+    return JSONResponse({
+        'lyrics': song['lyrics'],
+        'melody': song['melody'],
+        'theme': song.get('theme', theme),
+        'lang': song.get('lang', lang),
+        'has_audio': song.get('audio_path') is not None,
+    })
+
+
+@app.get('/song-audio')
+def get_song_audio(lang: str = 'hi'):
+    import tempfile, glob
+    pattern = os.path.join(tempfile.gettempdir(), f"song_{lang}_*.mp3")
+    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    if files:
+        return FileResponse(files[0], media_type='audio/mpeg', filename=f'song_{lang}.mp3')
+    return JSONResponse({'error': 'No audio found'}, status_code=404)
+
 
 # ── Voice Cloning ───────────────────────────────────────────────────────────
 
@@ -156,7 +204,7 @@ async def web_clone_voice(
     lang: str = Form('hi'),
     gender: str = Form('female'),
 ):
-    tmp = Path('uploads')
+    tmp = Path(tempfile.gettempdir()) / "vaaniverse_uploads"
     tmp.mkdir(exist_ok=True)
     dest = tmp / file.filename
     with open(dest, 'wb') as f:
@@ -214,21 +262,23 @@ def get_voices():
 def web_synthesize(text: str = Form(...), backend: str = Form('edge'), model: str = Form('')):
     if backend == 'coqui':
         try:
-            out = voice_models.synthesize_with_coqui(text, speaker=None, out_path='web_synth.wav', model_name=(model or None))
+            out_path = os.path.join(tempfile.gettempdir(), 'web_synth.wav')
+            out = voice_models.synthesize_with_coqui(text, speaker=None, out_path=out_path, model_name=(model or None))
             return FileResponse(out, media_type='audio/wav', filename='web_synth.wav')
         except Exception as e:
             return JSONResponse({'error': str(e)}, status_code=500)
     elif backend == 'edge':
         try:
-            out = edge_tts_engine.speak(text, lang='en', out_path='web_synth.mp3')
+            out_path = os.path.join(tempfile.gettempdir(), 'web_synth.mp3')
+            out = edge_tts_engine.speak(text, lang='en', out_path=out_path)
             return FileResponse(out, media_type='audio/mpeg', filename='web_synth.mp3')
         except Exception as e:
             return JSONResponse({'error': str(e)}, status_code=500)
     else:
-        out_path = 'web_synth_local.wav'
+        out_path = os.path.join(tempfile.gettempdir(), 'web_synth_local.wav')
         try:
             tts.speak(text, lang='en', out_path=out_path, backend='local')
-            return FileResponse(out_path, media_type='audio/wav', filename=out_path)
+            return FileResponse(out_path, media_type='audio/wav', filename='web_synth_local.wav')
         except Exception as e:
             return JSONResponse({'error': str(e)}, status_code=500)
 
@@ -264,13 +314,13 @@ async def job_stream(request: Request):
                 yield f"data: {payload}\n\n"
                 last = payload
             await asyncio.sleep(1)
-
+ 
     return StreamingResponse(event_generator(), media_type='text/event-stream')
 
 
 @app.post('/enqueue-clone')
 def web_enqueue_clone(file: UploadFile = File(...), name: str = Form(...), consent: str = Form(None)):
-    tmp = Path('uploads')
+    tmp = Path(tempfile.gettempdir()) / "vaaniverse_uploads"
     tmp.mkdir(exist_ok=True)
     dest = tmp / file.filename
     with open(dest, 'wb') as f:
