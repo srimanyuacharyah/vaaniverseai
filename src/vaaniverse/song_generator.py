@@ -146,7 +146,7 @@ def generate_lyrics(theme: str = 'love', lang: str = 'hi', lines: int = 4) -> st
     lines_chosen = _pick_lines_for_lang(theme, lang, lines)
     chorus = lines_chosen[-1] if lines_chosen else "La la"
     body = "\n".join(lines_chosen)
-    return f"{body}\n\nChorus: {chorus}"
+    return f"{body}\n\n--- Chorus ---\n{chorus}"
 
 
 def generate_long_lyrics(theme: str = 'love', lang: str = 'hi') -> str:

@@ -103,29 +103,40 @@ def _run_sync(coro):
 # Singing-style SSML synthesis
 # ---------------------------------------------------------------------------
 
-# Pitch patterns per line to create a melodic contour
+# Pitch patterns in semitones for a more musical feel
 _PITCH_PATTERNS = [
-    '+3Hz', '+5Hz', '+8Hz', '+6Hz', '+4Hz', '+2Hz', '+7Hz', '+5Hz',
-    '+1Hz', '+6Hz', '+9Hz', '+4Hz', '+3Hz', '+7Hz', '+5Hz', '+2Hz',
+    '+1st', '+3st', '+5st', '+4st', '+2st', '+0st', '+4st', '+2st',
+    '+1st', '+5st', '+7st', '+3st', '+2st', '+6st', '+4st', '+1st',
 ]
 
-_CHORUS_PITCH = '+10Hz'
-_BRIDGE_PITCH = '+6Hz'
+_CHORUS_PITCH = '+6st'
+_BRIDGE_PITCH = '+3st'
 
 
 def _build_singing_ssml(text: str, voice: str) -> str:
     """Convert lyrics text into SSML with prosody variations for singing.
 
-    - Each line gets a different pitch offset to create a melodic feel
-    - Rate is slowed to -15% for a musical pace
-    - Chorus / bridge / outro sections get emphasised
-    - Pauses are inserted between structural markers (--- Verse, etc.)
+    - Each line gets a different pitch offset (in semitones)
+    - Rate is slowed to -25% for a drawn-out singing pace
+    - Chorus / bridge / outro sections get emphasized
+    - Pauses are inserted between structural markers
+    - Emojis and metadata are stripped for synthesis
     """
-    lines = text.split('\n')
+    # Pre-process: remove emojis and non-lyric indicators
+    clean_text = text.replace('🎵', '').replace('🎶', '')
+    
+    lines = clean_text.split('\n')
     ssml_parts = []
+    # Detect lang from voice name (e.g. hi-IN-SwaraNeural -> hi-IN)
+    voice_lang = 'en-US'
+    if '-' in voice:
+        parts = voice.split('-')
+        if len(parts) >= 2:
+            voice_lang = f"{parts[0]}-{parts[1]}"
+
     ssml_parts.append(
         f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
-        f'xml:lang="en-US">'
+        f'xml:lang="{voice_lang}">'
     )
     ssml_parts.append(f'<voice name="{voice}">')
 
@@ -135,30 +146,31 @@ def _build_singing_ssml(text: str, voice: str) -> str:
     for line in lines:
         stripped = line.strip()
         if not stripped:
-            # Empty line → short pause
-            ssml_parts.append('<break time="400ms"/>')
+            ssml_parts.append('<break time="500ms"/>')
             continue
 
-        # Detect structural markers
-        if stripped.startswith('---') and stripped.endswith('---'):
-            # Section header: Verse / Chorus / Bridge / Outro
-            ssml_parts.append('<break time="700ms"/>')
-            lower = stripped.lower()
+        # Detect structural markers (Standard ones like --- Verse --- or labels like Chorus:)
+        lower = stripped.lower()
+        if (stripped.startswith('---') and stripped.endswith('---')) or \
+           lower.startswith('chorus:') or lower.startswith('verse:') or \
+           lower.startswith('bridge:') or lower.startswith('outro:'):
+            
+            ssml_parts.append('<break time="800ms"/>')
             in_chorus = 'chorus' in lower
             if 'outro' in lower:
-                ssml_parts.append('<break time="500ms"/>')
+                ssml_parts.append('<break time="1000ms"/>')
             continue
 
         # Pick pitch for this line
         if in_chorus:
             pitch = _CHORUS_PITCH
-            rate = '-20%'
-        elif 'bridge' in stripped.lower():
+            rate = '-30%'
+        elif 'bridge' in lower:
             pitch = _BRIDGE_PITCH
-            rate = '-10%'
+            rate = '-20%'
         else:
             pitch = _PITCH_PATTERNS[pitch_idx % len(_PITCH_PATTERNS)]
-            rate = '-15%'
+            rate = '-25%'
             pitch_idx += 1
 
         # Escape XML special chars
@@ -171,11 +183,11 @@ def _build_singing_ssml(text: str, voice: str) -> str:
         )
 
         ssml_parts.append(
-            f'<prosody rate="{rate}" pitch="{pitch}" volume="+5%">'
+            f'<prosody rate="{rate}" pitch="{pitch}" volume="+10%">'
             f'{safe}'
             f'</prosody>'
         )
-        ssml_parts.append('<break time="250ms"/>')
+        ssml_parts.append('<break time="400ms"/>')
 
     ssml_parts.append('</voice>')
     ssml_parts.append('</speak>')
