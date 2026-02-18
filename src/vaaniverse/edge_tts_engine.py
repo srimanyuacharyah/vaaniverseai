@@ -13,8 +13,11 @@ from typing import Optional
 
 try:
     import edge_tts  # type: ignore
+    import edge_tts.communicate
+    from xml.sax.saxutils import unescape
 except ImportError:
     edge_tts = None
+    unescape = None
 
 # ---------------------------------------------------------------------------
 # Pre-configured Indian-language voices
@@ -97,6 +100,29 @@ def _run_sync(coro):
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(lambda: asyncio.run(coro)).result()
     return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+# Monkeypatch edge-tts to support custom SSML
+# ---------------------------------------------------------------------------
+_original_mkssml = edge_tts.communicate.mkssml
+
+
+def _patched_mkssml(tc, escaped_text):
+    """Bypass edge-tts auto-wrapping if we detect our own SSML."""
+    if isinstance(escaped_text, bytes):
+        raw_str = escaped_text.decode("utf-8")
+    else:
+        raw_str = escaped_text
+
+    raw = unescape(raw_str)
+    if raw.strip().startswith("<speak"):
+        return raw
+    return _original_mkssml(tc, escaped_text)
+
+
+# Apply the patch
+edge_tts.communicate.mkssml = _patched_mkssml
 
 
 # ---------------------------------------------------------------------------
