@@ -267,8 +267,8 @@ def generate_song_audio(
     if out_path is None:
         out_path = os.path.join(tempfile.gettempdir(), f"song_{lang}_{os.getpid()}.mp3")
     try:
-        # Synthesize the lyrics — for long text edge-tts will produce 2–3 min
-        audio = edge_tts_engine.speak(song['lyrics'], lang=lang, gender=gender, out_path=out_path)
+        # Synthesize the lyrics as a melodious song
+        audio = edge_tts_engine.speak_singing(song['lyrics'], lang=lang, gender=gender, out_path=out_path)
         song['audio_path'] = audio
     except Exception as e:
         song['audio_path'] = None
