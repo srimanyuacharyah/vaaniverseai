@@ -122,46 +122,176 @@ async function doSpeak() {
 }
 
 /* ══════════════════ VOICE TRANSLATE ══════════════════ */
-async function doVoiceTranslate() {
+/* ══════════════════ VOICE TRANSLATE (Consolidated into Translator Tab) ══════════════════ */
+// Old function removed. Use doTranslateText / doTranslateRecorded / doTranslateUpload instead.
+
+/* ══════════════════ NEW TRANSLATOR TAB (S2S) ══════════════════ */
+let transMode = 'text'; // Default to text
+function setTranslatorMode(mode) {
+    transMode = mode;
+    document.getElementById('translator-text-ui').style.display = mode === 'text' ? 'block' : 'none';
+    document.getElementById('translator-record-ui').style.display = mode === 'record' ? 'block' : 'none';
+    document.getElementById('translator-upload-ui').style.display = mode === 'upload' ? 'block' : 'none';
+
+    document.getElementById('trans-mode-text').classList.toggle('active', mode === 'text');
+    document.getElementById('trans-mode-record').classList.toggle('active', mode === 'record');
+    document.getElementById('trans-mode-upload').classList.toggle('active', mode === 'upload');
+}
+
+async function doTranslateText() {
+    const text = document.getElementById('trans-text-input').value;
+    if (!text) { showStatus('trans-status', '⚠️ Enter text first', 'error'); return; }
+
     const btn = event.currentTarget; setLoading(btn, true);
-    if (vtMode === 'audio') {
-        const fileInput = document.getElementById('vt-file');
-        if (!fileInput.files.length) { showStatus('vt-status', '⚠️ Upload a recording first.', 'error'); setLoading(btn, false); return; }
-        showStatus('vt-status', '⏳ Transcribing, translating...', 'info');
-        const body = new FormData();
-        body.append('file', fileInput.files[0]);
-        body.append('src_lang', document.getElementById('vt-src').value);
-        body.append('tgt_lang', document.getElementById('vt-tgt').value);
-        body.append('gender', document.getElementById('vt-gender').value);
-        try {
-            const res = await fetch('/voice-translate-audio', { method: 'POST', body });
-            if (!res.ok) { const d = await res.json(); if (d.transcribed) { document.getElementById('vt-transcribed').textContent = d.transcribed; document.getElementById('vt-transcribed-result').style.display = 'block'; document.getElementById('vt-transcribed-result').classList.add('visible'); } if (d.translated) { document.getElementById('vt-translated').textContent = d.translated; document.getElementById('vt-result').classList.add('visible'); } throw new Error(d.error); }
-            const transcribed = res.headers.get('X-Transcribed-Text') || '';
-            const translated = res.headers.get('X-Translated-Text') || '';
-            if (transcribed) { document.getElementById('vt-transcribed').textContent = transcribed; document.getElementById('vt-transcribed-result').style.display = 'block'; document.getElementById('vt-transcribed-result').classList.add('visible'); }
-            document.getElementById('vt-translated').textContent = translated; document.getElementById('vt-result').classList.add('visible');
-            const blob = await res.blob(); const url = URL.createObjectURL(blob);
-            document.getElementById('vt-audio').src = url; document.getElementById('vt-player').style.display = 'block'; document.getElementById('vt-audio').play();
-            showStatus('vt-status', '✅ Voice translation complete!', 'success');
-        } catch (e) { showStatus('vt-status', '❌ ' + e.message, 'error'); }
-    } else {
-        showStatus('vt-status', '⏳ Translating...', 'info');
-        const body = new FormData();
-        body.append('text', document.getElementById('vt-text').value);
-        body.append('src_lang', document.getElementById('vt-src').value);
-        body.append('tgt_lang', document.getElementById('vt-tgt').value);
-        body.append('gender', document.getElementById('vt-gender').value);
-        try {
-            const res = await fetch('/voice-translate', { method: 'POST', body });
-            if (!res.ok) { const d = await res.json(); document.getElementById('vt-translated').textContent = d.translated || ''; document.getElementById('vt-result').classList.add('visible'); throw new Error(d.error); }
-            const translatedText = res.headers.get('X-Translated-Text') || '';
-            document.getElementById('vt-translated').textContent = translatedText; document.getElementById('vt-result').classList.add('visible'); document.getElementById('vt-transcribed-result').style.display = 'none';
-            const blob = await res.blob(); const url = URL.createObjectURL(blob);
-            document.getElementById('vt-audio').src = url; document.getElementById('vt-player').style.display = 'block'; document.getElementById('vt-audio').play();
-            showStatus('vt-status', '✅ Voice translation complete!', 'success');
-        } catch (e) { showStatus('vt-status', '❌ ' + e.message, 'error'); }
-    }
+    showStatus('trans-status', '⏳ Translating...', 'info');
+
+    const body = new FormData();
+    body.append('text', text);
+    body.append('src_lang', 'auto');
+    body.append('tgt_lang', document.getElementById('trans-tgt-lang').value);
+    body.append('gender', 'female'); // Default
+
+    try {
+        const res = await fetch('/voice-translate', { method: 'POST', body });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+
+        const translated = decodeURIComponent(res.headers.get('X-Translated-Text') || '');
+        document.getElementById('trans-original').textContent = text;
+        document.getElementById('trans-translated').textContent = translated || '(No translation)';
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = document.getElementById('trans-audio');
+        audio.src = url;
+        document.getElementById('trans-player').style.display = 'block';
+        document.getElementById('trans-result').style.display = 'block';
+        audio.play();
+        showStatus('trans-status', '✅ Success!', 'success');
+    } catch (e) { showStatus('trans-status', '❌ ' + e.message, 'error'); }
     setLoading(btn, false);
+}
+
+function onTranslatorFileSelect() {
+    const f = document.getElementById('trans-file').files[0];
+    if (f) document.getElementById('trans-file-label').innerHTML = '📁 <strong>' + f.name + '</strong><br><small>' + (f.size / 1024).toFixed(1) + ' KB</small>';
+}
+
+// MediaRecorder for Translator
+let transRecorder = null;
+let transChunks = [];
+let transBlob = null;
+let isTransRecording = false;
+let transStream = null;
+let transVizCtx = null, transVizCanvas = null, transVizAnalyser = null;
+let transAnimFrame = null;
+
+async function toggleTranslatorRecording() {
+    if (isTransRecording) { stopTranslatorRecording(); return; }
+    try {
+        transStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        transRecorder = new MediaRecorder(transStream);
+        transChunks = [];
+        transRecorder.ondataavailable = e => { if (e.data.size > 0) transChunks.push(e.data); };
+        transRecorder.onstop = async () => {
+            transBlob = new Blob(transChunks, { type: 'audio/webm' });
+            transStream.getTracks().forEach(t => t.stop());
+            // Auto submit
+            doTranslateRecorded();
+        };
+        transRecorder.start();
+        isTransRecording = true;
+        document.getElementById('trans-status-text').textContent = 'Recording... Tap to stop.';
+        document.getElementById('trans-record-btn').classList.add('recording');
+        setupTransViz(transStream);
+    } catch (e) { showStatus('trans-status', '❌ Mic error: ' + e.message, 'error'); }
+}
+
+function stopTranslatorRecording() {
+    if (transRecorder && transRecorder.state !== 'inactive') transRecorder.stop();
+    isTransRecording = false;
+    document.getElementById('trans-status-text').textContent = 'Processing...';
+    document.getElementById('trans-record-btn').classList.remove('recording');
+    if (transAnimFrame) cancelAnimationFrame(transAnimFrame);
+}
+
+function setupTransViz(stream) {
+    const actx = getAudioCtx();
+    const source = actx.createMediaStreamSource(stream);
+    transVizAnalyser = actx.createAnalyser();
+    transVizAnalyser.fftSize = 64;
+    source.connect(transVizAnalyser);
+    transVizCanvas = document.getElementById('trans-viz');
+    // Simple mock viz since canvas might not be initialized properly in hidden tab
+    if (!transVizCanvas.clientWidth) return;
+    transVizCanvas.innerHTML = '<canvas width="' + transVizCanvas.clientWidth + '" height="60"></canvas>';
+    const cvs = transVizCanvas.querySelector('canvas');
+    const ctx = cvs.getContext('2d');
+    const bufLen = transVizAnalyser.frequencyBinCount;
+    const data = new Uint8Array(bufLen);
+    function draw() {
+        if (!isTransRecording) return;
+        transAnimFrame = requestAnimationFrame(draw);
+        transVizAnalyser.getByteFrequencyData(data);
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.fillStyle = '#ec4899';
+        const barW = cvs.width / bufLen;
+        for (let i = 0; i < bufLen; i++) {
+            const h = (data[i] / 255) * cvs.height;
+            ctx.fillRect(i * barW, (cvs.height - h) / 2, barW - 1, h);
+        }
+    }
+    draw();
+}
+
+async function doTranslateRecorded() {
+    if (!transBlob) return;
+    showStatus('trans-status', '⏳ Transcribing & Translating...', 'info');
+    const body = new FormData();
+    body.append('file', new File([transBlob], 'recording.webm', { type: 'audio/webm' }));
+    body.append('tgt_lang', document.getElementById('trans-tgt-lang').value);
+    body.append('src_lang', 'auto'); // Auto detect
+    await sendTranslateRequest(body);
+}
+
+async function doTranslateUpload() {
+    const f = document.getElementById('trans-file').files[0];
+    if (!f) { showStatus('trans-status', '⚠️ Select a file first', 'error'); return; }
+    const btn = event.currentTarget; setLoading(btn, true);
+    showStatus('trans-status', '⏳ Transcribing & Translating...', 'info');
+    const body = new FormData();
+    body.append('file', f);
+    body.append('tgt_lang', document.getElementById('trans-tgt-lang').value);
+    body.append('src_lang', 'auto');
+    await sendTranslateRequest(body);
+    setLoading(btn, false);
+}
+
+async function sendTranslateRequest(body) {
+    try {
+        const res = await fetch('/voice-translate-audio', { method: 'POST', body });
+        if (!res.ok) {
+            const d = await res.json();
+            throw new Error(d.error || 'Server error');
+        }
+
+        // Headers for text
+        const transcribed = decodeURIComponent(res.headers.get('X-Transcribed-Text') || '');
+        const translated = decodeURIComponent(res.headers.get('X-Translated-Text') || '');
+
+        document.getElementById('trans-original').textContent = transcribed || '(No speech detected)';
+        document.getElementById('trans-translated').textContent = translated || '...';
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = document.getElementById('trans-audio');
+        audio.src = url;
+        document.getElementById('trans-player').style.display = 'block';
+        document.getElementById('trans-result').style.display = 'block';
+        audio.play();
+        showStatus('trans-status', '✅ Success!', 'success');
+    } catch (e) {
+        showStatus('trans-status', '❌ ' + e.message, 'error');
+    }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -583,10 +713,14 @@ function selectLegendary(vid) {
 async function doSpeakLegendary() {
     const btn = event.currentTarget;
     const text = document.getElementById('legend-text').value;
+    const autoTrans = document.getElementById('legend-auto-translate').checked ? 'on' : 'off';
     if (!text || !selectedLegendaryId) { showStatus('legend-status', '⚠️ Select a voice and enter text.', 'error'); return; }
     setLoading(btn, true);
     showStatus('legend-status', '⏳ Generating legendary voice...', 'info');
-    const body = new FormData(); body.append('voice_id', selectedLegendaryId); body.append('text', text);
+    const body = new FormData();
+    body.append('voice_id', selectedLegendaryId);
+    body.append('text', text);
+    body.append('auto_translate', autoTrans);
     try {
         const res = await fetch('/speak-legendary', { method: 'POST', body });
         if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
@@ -613,6 +747,7 @@ async function doSpeakAge() {
     body.append('lang', document.getElementById('age-lang').value);
     body.append('gender', document.getElementById('age-gender').value);
     body.append('age_preset', selectedAge);
+    body.append('auto_translate', document.getElementById('age-auto-translate').checked ? 'on' : 'off');
     try {
         const res = await fetch('/speak-age', { method: 'POST', body });
         if (!res.ok) { const d = await res.json(); throw new Error(d.error); }

@@ -1,0 +1,17 @@
+{
+  "name": "myvoi",
+  "sample_file": "voice_profiles\\myvoi_sample.wav",
+  "original_sample": "C:\\Users\\student\\AppData\\Local\\Temp\\vaaniverse_uploads\\Tuesday, 3h28m pm.wav",
+  "edge_voice": "kn-IN-SapnaNeural",
+  "language": "kn",
+  "gender": "female",
+  "created_at": "2026-02-19T06:51:34.541628+00:00",
+  "consent_given": true,
+  "voice_analysis": {
+    "estimated_gender": "female",
+    "pitch_hz": 761.9,
+    "duration_seconds": 12.05,
+    "analysis_method": "zero_crossing_rate"
+  },
+  "note": "This profile uses the closest-matching edge-tts neural voice. For true voice cloning, install Coqui TTS or RVC."
+}

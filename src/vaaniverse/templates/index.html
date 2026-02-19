@@ -22,9 +22,10 @@
   <nav class="tab-nav" id="tabNav">
     <button class="tab-btn active" data-tab="translate" onclick="switchTab('translate')">🌐 Translate</button>
     <button class="tab-btn" data-tab="tts" onclick="switchTab('tts')">🔊 TTS</button>
-    <button class="tab-btn" data-tab="voice-translate" onclick="switchTab('voice-translate')">🗣️ Voice</button>
+
     <button class="tab-btn" data-tab="song" onclick="switchTab('song')">🎵 Song</button>
     <button class="tab-btn" data-tab="clone" onclick="switchTab('clone')">🎤 Clone</button>
+    <button class="tab-btn" data-tab="translator" onclick="switchTab('translator')">🌐 Translator</button>
     <button class="tab-btn" data-tab="studio" onclick="switchTab('studio')">🎚️ Studio</button>
     <button class="tab-btn" data-tab="library" onclick="switchTab('library')">📚 Library</button>
     <button class="tab-btn" id="login-tab-btn" onclick="openLoginModal()">🔐 Login</button>
@@ -103,56 +104,7 @@
       </div>
     </div>
 
-    <!-- TAB 3 — VOICE TRANSLATION -->
-    <div class="tab-panel" id="tab-voice-translate">
-      <div class="card">
-        <div class="card-title"><span class="icon">🗣️</span> Voice Translation</div>
-        <p class="card-desc">Translate text or your own voice recording into another language and hear it spoken!</p>
-        <div class="mode-toggle">
-          <button class="mode-btn active" onclick="setVTMode('text')" id="vt-mode-text">📝 Type Text</button>
-          <button class="mode-btn" onclick="setVTMode('audio')" id="vt-mode-audio">🎙️ Upload Audio</button>
-        </div>
-        <div id="vt-text-mode">
-          <div class="form-group"><label>Enter text to translate & speak</label><textarea id="vt-text"
-              placeholder="e.g. Hello, how are you?">Hello, how are you? I am very happy to meet you today.</textarea>
-          </div>
-        </div>
-        <div id="vt-audio-mode" style="display:none">
-          <div class="form-group"><label>Upload your voice recording</label>
-            <div class="upload-zone" id="vt-upload-zone"><input type="file" id="vt-file"
-                accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a" onchange="onVTFileSelect()">
-              <div class="upload-label" id="vt-upload-label"><span style="font-size:2rem">🎙️</span><br><strong>Tap to
-                  upload</strong> or drag & drop<br><small>All audio formats supported</small></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Source Language</label><select id="vt-src">
-              <option value="auto">Auto-Detect</option>{% for code, name in languages.items() %}<option
-                value="{{ code }}" {{ 'selected' if code=='en' else '' }}>{{ name }}</option>{% endfor %}
-            </select></div>
-          <div class="form-group"><label>Target Language</label><select id="vt-tgt">{% for code, name in
-              languages.items() %}<option value="{{ code }}" {{ 'selected' if code=='kn' else '' }}>{{ name }}</option>
-              {% endfor %}</select></div>
-          <div class="form-group"><label>Voice</label><select id="vt-gender">
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select></div>
-        </div>
-        <button class="btn btn-primary" onclick="doVoiceTranslate()"><span class="spinner"></span><span
-            class="btn-text">🗣️ Translate & Speak</span></button>
-        <div class="status" id="vt-status"></div>
-        <div class="result-box" id="vt-transcribed-result" style="display:none">
-          <div class="result-label">🎙️ Transcribed</div>
-          <div class="result-text" id="vt-transcribed"></div>
-        </div>
-        <div class="result-box" id="vt-result">
-          <div class="result-label">🌐 Translated</div>
-          <div class="result-text" id="vt-translated"></div>
-        </div>
-        <div class="audio-player" id="vt-player" style="display:none"><audio controls id="vt-audio"></audio></div>
-      </div>
-    </div>
+
 
     <!-- TAB 4 — SONG GENERATOR (Suno AI style) -->
     <div class="tab-panel" id="tab-song">
@@ -337,6 +289,8 @@
           person.</p>
         <div class="form-group"><label>Text to Speak</label><textarea id="age-text"
             placeholder="Type something to hear in different age voices...">Hello, I am speaking in a different age style!</textarea>
+          <div class="checkbox-group"><input type="checkbox" id="age-auto-translate"><label for="age-auto-translate">✨
+              Auto-translate text to target language</label></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Age Style</label>
@@ -402,7 +356,10 @@
         </div>
         <div id="legendary-panel" style="display:none; margin-top:20px;">
           <div class="form-group"><label>Speaking as: <strong id="legend-name-display"></strong></label><textarea
-              id="legend-text" placeholder="Type text to speak with legendary voice..."></textarea></div>
+              id="legend-text" placeholder="Type text to speak with legendary voice..."></textarea>
+            <div class="checkbox-group"><input type="checkbox" id="legend-auto-translate"><label
+                for="legend-auto-translate">✨ Auto-translate text to legend's language</label></div>
+          </div>
           <button class="btn btn-primary" onclick="doSpeakLegendary()"><span class="spinner"></span><span
               class="btn-text">⭐ Speak</span></button>
           <div class="status" id="legend-status"></div>
@@ -434,7 +391,83 @@
       </div>
     </div>
 
-    <!-- TAB 6 — STUDIO (Audio Editor) -->
+    <!-- TAB 6 — TRANSLATOR (Speech-to-Speech) -->
+    <div class="tab-panel" id="tab-translator">
+      <div class="card">
+        <div class="card-title"><span class="icon">🌐</span> Voice Translator</div>
+        <p class="card-desc">Speak or upload audio in ANY language. We'll transcribe it, translate it, and speak it back
+          in your target language!</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Input Source</label>
+            <div class="mode-toggle">
+              <button class="mode-btn active" onclick="setTranslatorMode('text')" id="trans-mode-text">📝 Text</button>
+              <button class="mode-btn" onclick="setTranslatorMode('record')" id="trans-mode-record">🎤 Record</button>
+              <button class="mode-btn" onclick="setTranslatorMode('upload')" id="trans-mode-upload">📁 Upload</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Target Language</label>
+            <select id="trans-tgt-lang">{% for code, name in languages.items() %}
+              <option value="{{ code }}" {{ 'selected' if code=='ta' else '' }}>{{ name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Text UI -->
+        <div id="translator-text-ui" style="margin-bottom:20px">
+          <div class="form-group"><label>Enter text to translate & speak</label><textarea id="trans-text-input"
+              placeholder="e.g. Hello, how are you?">Hello, how are you? I am very happy to meet you today.</textarea>
+          </div>
+          <button class="btn btn-primary" onclick="doTranslateText()"><span class="spinner"></span><span
+              class="btn-text">🗣️ Translate & Speak</span></button>
+        </div>
+
+        <!-- Record UI -->
+        <div id="translator-record-ui"
+          style="display:none;text-align:center;padding:20px;background:var(--bg-secondary);border-radius:var(--radius);margin-bottom:20px">
+          <div class="waveform-viz" id="trans-viz" style="height:60px;margin-bottom:15px"></div>
+          <button class="record-btn" id="trans-record-btn" onclick="toggleTranslatorRecording()">
+            <div class="record-icon"></div>
+          </button>
+          <p id="trans-status-text" style="margin-top:10px;color:var(--text-muted)">Tap to start recording...</p>
+        </div>
+
+        <!-- Upload UI -->
+        <div id="translator-upload-ui" style="display:none;margin-bottom:20px">
+          <div class="upload-zone"><input type="file" id="trans-file" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a"
+              onchange="onTranslatorFileSelect()">
+            <div class="upload-label" id="trans-file-label">
+              <span style="font-size:2rem">📁</span><br><strong>Tap to upload</strong> audio<br><small>WAV, MP3, M4A,
+                OGG</small>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px"><button class="btn btn-primary"
+              onclick="doTranslateUpload()">🚀 Translate File</button></div>
+        </div>
+
+        <!-- Results -->
+        <div id="trans-result" style="display:none;animation:fadeIn 0.5s">
+          <div class="form-group">
+            <label>You said (Transcribed):</label>
+            <div class="box-output" id="trans-original">...</div>
+          </div>
+          <div class="form-group">
+            <label>Translation:</label>
+            <div class="box-output" id="trans-translated"
+              style="color:var(--accent-2);font-weight:600;font-size:1.1rem">...</div>
+          </div>
+          <div class="audio-player" id="trans-player">
+            <audio controls id="trans-audio"></audio>
+          </div>
+        </div>
+
+        <div class="status" id="trans-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 7 — STUDIO (Audio Editor) -->
     <div class="tab-panel" id="tab-studio">
       <div class="card">
         <div class="card-title"><span class="icon">🎚️</span> AI Audio Studio</div>

@@ -102,8 +102,9 @@ async def web_voice_translate(
         )
         audio_path = result.get('audio_path')
         if audio_path and os.path.exists(audio_path):
+            import urllib.parse
             response = FileResponse(audio_path, media_type='audio/mpeg', filename=f'translated_{tgt_lang}.mp3')
-            response.headers['X-Translated-Text'] = result['translated']
+            response.headers['X-Translated-Text'] = urllib.parse.quote(result['translated'])
             return response
         return JSONResponse({'error': 'Audio generation failed', 'translated': result.get('translated', '')}, status_code=500)
     except Exception as e:
@@ -129,9 +130,10 @@ async def web_voice_translate_audio(
         )
         audio_path = result.get('audio_path')
         if audio_path and os.path.exists(audio_path):
+            import urllib.parse
             response = FileResponse(audio_path, media_type='audio/mpeg', filename=f'translated_{tgt_lang}.mp3')
-            response.headers['X-Transcribed-Text'] = result.get('transcribed', '')
-            response.headers['X-Translated-Text'] = result.get('translated', '')
+            response.headers['X-Transcribed-Text'] = urllib.parse.quote(result.get('transcribed', ''))
+            response.headers['X-Translated-Text'] = urllib.parse.quote(result.get('translated', ''))
             return response
         return JSONResponse({
             'error': 'Audio generation failed',
@@ -322,9 +324,20 @@ def get_legendary_voices():
 async def web_speak_legendary(
     voice_id: str = Form(...),
     text: str = Form(...),
+    auto_translate: str = Form('off'),
 ):
     """Speak text using a legendary voice preset."""
     try:
+        if auto_translate == 'on':
+            # Get target language from voice ID
+            profile = voice_clone.LEGENDARY_VOICES.get(voice_id)
+            tgt = 'hi'  # default fallback
+            if profile:
+                # Heuristic: map profile language code
+                tgt = profile.get('language', 'hi')
+            
+            text = translation.translate(text, src='auto', tgt=tgt)
+            
         audio = await voice_clone.speak_legendary_async(voice_id, text)
         return FileResponse(audio, media_type='audio/mpeg', filename=f'legendary_{voice_id}.mp3')
     except Exception as e:
@@ -429,9 +442,13 @@ async def web_speak_age(
     lang: str = Form('hi'),
     gender: str = Form('female'),
     age_preset: str = Form('adult'),
+    auto_translate: str = Form('off'),
 ):
     """Speak text with a specific age voice style."""
     try:
+        if auto_translate == 'on':
+            text = translation.translate(text, src='auto', tgt=lang)
+
         audio = await voice_styles.speak_with_age_async(
             text, lang=lang, gender=gender, age_preset=age_preset,
         )
