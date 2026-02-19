@@ -354,7 +354,8 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Language</label><select id="age-lang">{% for code, name in languages.items() %}
-              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor %}</select>
+              <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor %}
+            </select>
           </div>
           <div class="form-group"><label>Gender</label><select id="age-gender">
               <option value="female">Female</option>
@@ -441,10 +442,11 @@
           up, enhance quality, and more!</p>
 
         <div class="form-group"><label>Upload Audio File</label>
-          <div class="upload-zone"><input type="file" id="studio-file" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a"
-              onchange="onStudioFileSelect()">
+          <div class="upload-zone"><input type="file" id="studio-file"
+              accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a,.aac,.wma,.webm,.amr,.opus" onchange="onStudioFileSelect()">
             <div class="upload-label" id="studio-upload-label"><span style="font-size:2rem">🎧</span><br><strong>Tap to
-                upload</strong> audio file<br><small>WAV, MP3, OGG, FLAC supported</small></div>
+                upload</strong> audio file<br><small>All audio formats supported — WAV, MP3, OGG, FLAC, M4A, AAC, WMA,
+                WEBM & more</small></div>
           </div>
         </div>
 

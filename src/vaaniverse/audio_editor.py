@@ -87,7 +87,35 @@ def list_effects():
 # ---------------------------------------------------------------------------
 
 def _read_audio(file_path: str):
-    """Read audio file and return (data, samplerate)."""
+    """Read audio file and return (data, samplerate).
+
+    Supports all common audio formats.  Tries soundfile first (WAV/FLAC/OGG),
+    then falls back to pydub conversion for MP3, M4A, AAC, WMA, WEBM, etc.
+    """
+    # Try soundfile directly first (fast path for WAV/FLAC/OGG)
+    try:
+        data, sr = sf.read(file_path, dtype='float64')
+        return data, sr
+    except Exception:
+        pass
+
+    # Fallback: convert to WAV via pydub (handles MP3, M4A, AAC, WMA, etc.)
+    try:
+        from pydub import AudioSegment
+        ext = os.path.splitext(file_path)[1].lower().lstrip('.')
+        fmt_map = {'mp3': 'mp3', 'm4a': 'mp4', 'aac': 'aac', 'wma': 'wma',
+                   'webm': 'webm', 'amr': 'amr', 'opus': 'ogg', 'ogg': 'ogg'}
+        fmt = fmt_map.get(ext, ext) if ext else None
+        audio = AudioSegment.from_file(file_path, format=fmt)
+        wav_path = file_path + '.converted.wav'
+        audio.export(wav_path, format='wav')
+        data, sr = sf.read(wav_path, dtype='float64')
+        os.remove(wav_path)  # cleanup temp
+        return data, sr
+    except ImportError:
+        pass
+
+    # Last resort: try soundfile with explicit format
     data, sr = sf.read(file_path, dtype='float64')
     return data, sr
 
