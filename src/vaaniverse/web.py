@@ -1,8 +1,8 @@
 """Vaaniverse AI — FastAPI web application.
 
 Provides a modern web UI for translation, text-to-speech, voice
-translation (text + audio upload), song generation (custom lyrics),
-and voice cloning features.
+translation (text + audio upload), song generation (custom lyrics + instrumentals),
+voice cloning, and legendary voice features.
 """
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ from vaaniverse import translation, tts, song_generator, voice_clone
 from vaaniverse import voice_models, config, edge_tts_engine, voice_translator
 from vaaniverse import consent as consent_mod
 from vaaniverse import job_queue
+from vaaniverse import voice_styles, audio_editor, auth, database as db
+import tempfile
 
 app = FastAPI(title="Vaaniverse AI")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -46,6 +48,11 @@ def index(request: Request):
         'indian_languages': translation.INDIAN_LANGUAGES,
         'voices': edge_tts_engine.VOICE_MAP,
         'sr_available': voice_translator.is_speech_recognition_available(),
+        'genres': song_generator.GENRES,
+        'instruments': song_generator.INSTRUMENT_LIST,
+        'legendary_voices': voice_clone.list_legendary_voices(),
+        'age_presets': voice_styles.list_age_presets(),
+        'audio_effects': audio_editor.list_effects(),
     })
 
 
@@ -117,7 +124,6 @@ async def web_voice_translate_audio(
     with open(dest, 'wb') as f:
         shutil.copyfileobj(file.file, f)
     try:
-        # Step 1-3 handled in the async pipeline
         result = await voice_translator.translate_voice_from_audio_async(
             str(dest), src_lang=src_lang, tgt_lang=tgt_lang, gender=gender,
         )
@@ -148,6 +154,12 @@ async def web_voice_translate_text(
 
 # ── Song Generation ─────────────────────────────────────────────────────────
 
+@app.get('/genres')
+def get_genres():
+    """Return all available genre presets."""
+    return JSONResponse({'genres': song_generator.GENRES})
+
+
 @app.post('/generate-song')
 async def web_generate_song(
     theme: str = Form('love'),
@@ -157,22 +169,46 @@ async def web_generate_song(
     custom_lyrics: str = Form(''),
     genre_description: str = Form(''),
     full_length: str = Form('on'),
+    genre: str = Form('bollywood'),
+    bpm: int = Form(0),
+    instruments_drums: str = Form('on'),
+    instruments_bass: str = Form('on'),
+    instruments_guitar: str = Form('off'),
+    instruments_piano: str = Form('on'),
+    instruments_synth: str = Form('on'),
+    duration: int = Form(120),
+    instrumental_only: str = Form('off'),
 ):
     is_full = full_length == 'on'
     has_custom = bool(custom_lyrics.strip()) or bool(genre_description.strip())
+    is_instrumental = instrumental_only == 'on'
 
-    if with_audio == 'on':
+    # Parse instrument toggles
+    instruments = {
+        'drums': instruments_drums == 'on',
+        'bass': instruments_bass == 'on',
+        'guitar': instruments_guitar == 'on',
+        'piano': instruments_piano == 'on',
+        'synth': instruments_synth == 'on',
+    }
+
+    if with_audio == 'on' or is_instrumental:
         song = await song_generator.generate_song_audio_async(
             theme=theme, lang=lang, gender=gender,
             custom_lyrics=custom_lyrics,
             genre_description=genre_description,
             full_length=(is_full or has_custom),
+            genre=genre, bpm=bpm, instruments=instruments,
+            duration=duration,
+            instrumental_only=is_instrumental,
         )
     else:
         song = song_generator.generate_full_song(
             theme=theme, lang=lang,
             custom_lyrics=custom_lyrics,
             genre_description=genre_description,
+            genre=genre, bpm=bpm, instruments=instruments,
+            duration=duration,
         )
 
     return JSONResponse({
@@ -181,16 +217,27 @@ async def web_generate_song(
         'theme': song.get('theme', theme),
         'lang': song.get('lang', lang),
         'has_audio': song.get('audio_path') is not None,
+        'instrumental_config': song.get('instrumental_config', {}),
+        'instrumental_only': song.get('instrumental_only', False),
     })
 
 
 @app.get('/song-audio')
 def get_song_audio(lang: str = 'hi'):
-    import tempfile, glob
-    pattern = os.path.join(tempfile.gettempdir(), f"song_{lang}_*.mp3")
-    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    import tempfile as _tmp, glob
+    tmp = _tmp.gettempdir()
+    # Look for vocal MP3s and instrumental WAVs
+    files = []
+    for pattern in [
+        os.path.join(tmp, f"song_{lang}_*.mp3"),
+        os.path.join(tmp, "song_instrumental_*.wav"),
+    ]:
+        files.extend(glob.glob(pattern))
+    files = sorted(files, key=os.path.getmtime, reverse=True)
     if files:
-        return FileResponse(files[0], media_type='audio/mpeg', filename=f'song_{lang}.mp3')
+        f = files[0]
+        media = 'audio/wav' if f.endswith('.wav') else 'audio/mpeg'
+        return FileResponse(f, media_type=media, filename=os.path.basename(f))
     return JSONResponse({'error': 'No audio found'}, status_code=404)
 
 
@@ -226,6 +273,24 @@ async def web_clone_voice(
         return JSONResponse({'error': str(e)}, status_code=400)
 
 
+@app.post('/upload-recording')
+async def web_upload_recording(
+    file: UploadFile = File(...),
+    name: str = Form('recording'),
+):
+    """Save an in-browser recorded audio file."""
+    tmp = Path(tempfile.gettempdir()) / "vaaniverse_uploads"
+    tmp.mkdir(exist_ok=True)
+    dest = tmp / f"{name}.webm"
+    with open(dest, 'wb') as f:
+        shutil.copyfileobj(file.file, f)
+    return JSONResponse({
+        'success': True,
+        'path': str(dest),
+        'filename': f"{name}.webm",
+    })
+
+
 @app.get('/voice-profiles')
 async def web_voice_profiles():
     profiles = voice_clone.list_profiles()
@@ -239,9 +304,29 @@ async def web_speak_with_profile(
     lang: str = Form(''),
 ):
     try:
-        # Synthesis within profile is now using edge_tts_engine.speak which we should also make async
         audio = await voice_clone.speak_with_profile_async(name, text, lang=lang or None)
         return FileResponse(audio, media_type='audio/mpeg', filename=f'clone_{name}.mp3')
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
+
+
+# ── Legendary Voices ───────────────────────────────────────────────────────
+
+@app.get('/legendary-voices')
+def get_legendary_voices():
+    """Return all legendary voice presets."""
+    return JSONResponse({'voices': voice_clone.list_legendary_voices()})
+
+
+@app.post('/speak-legendary')
+async def web_speak_legendary(
+    voice_id: str = Form(...),
+    text: str = Form(...),
+):
+    """Speak text using a legendary voice preset."""
+    try:
+        audio = await voice_clone.speak_legendary_async(voice_id, text)
+        return FileResponse(audio, media_type='audio/mpeg', filename=f'legendary_{voice_id}.mp3')
     except Exception as e:
         return JSONResponse({'error': str(e)}, status_code=400)
 
@@ -328,3 +413,124 @@ def web_enqueue_clone(file: UploadFile = File(...), name: str = Form(...), conse
     params = {'sample': str(dest), 'name': name, 'consent': (consent == 'on')}
     job_queue.manager.submit('clone', params)
     return RedirectResponse(url='/', status_code=303)
+
+
+# ── Voice Age Styles ────────────────────────────────────────────────────────
+
+@app.get('/age-presets')
+def get_age_presets():
+    """Return all age voice presets."""
+    return JSONResponse({'presets': voice_styles.list_age_presets()})
+
+
+@app.post('/speak-age')
+async def web_speak_age(
+    text: str = Form(...),
+    lang: str = Form('hi'),
+    gender: str = Form('female'),
+    age_preset: str = Form('adult'),
+):
+    """Speak text with a specific age voice style."""
+    try:
+        audio = await voice_styles.speak_with_age_async(
+            text, lang=lang, gender=gender, age_preset=age_preset,
+        )
+        return FileResponse(audio, media_type='audio/mpeg', filename=f'age_{age_preset}.mp3')
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
+
+
+# ── Audio Editor / Studio ──────────────────────────────────────────────────
+
+@app.get('/audio-effects')
+def get_audio_effects():
+    """Return available audio effects."""
+    return JSONResponse({'effects': audio_editor.list_effects()})
+
+
+@app.post('/edit-audio')
+async def web_edit_audio(
+    file: UploadFile = File(...),
+    effect: str = Form('enhance'),
+):
+    """Apply an audio effect to an uploaded file."""
+    tmp_dir = Path(tempfile.gettempdir()) / 'vaaniverse_studio'
+    tmp_dir.mkdir(exist_ok=True)
+    src = tmp_dir / file.filename
+    with open(src, 'wb') as f:
+        shutil.copyfileobj(file.file, f)
+    try:
+        out = audio_editor.process_audio(str(src), effect)
+        return FileResponse(out, media_type='audio/wav', filename=f'edited_{effect}.wav')
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
+
+
+# ── Auth & History ─────────────────────────────────────────────────────────
+
+@app.post('/register')
+def web_register(
+    username: str = Form(...),
+    password: str = Form(...),
+    email: str = Form(''),
+):
+    result = auth.register(username, password, email)
+    status = 200 if result['ok'] else 400
+    return JSONResponse(result, status_code=status)
+
+
+@app.post('/login')
+def web_login(
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    result = auth.login(username, password)
+    status = 200 if result['ok'] else 401
+    return JSONResponse(result, status_code=status)
+
+
+@app.get('/me')
+def web_me(request: Request):
+    """Get current user info from token."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        token = request.cookies.get('vaaniverse_token', '')
+    user = auth.get_current_user(token)
+    if user:
+        return JSONResponse({'ok': True, 'user': user})
+    return JSONResponse({'ok': False, 'error': 'Not logged in'}, status_code=401)
+
+
+@app.post('/save-history')
+def web_save_history(
+    request: Request,
+    entry_type: str = Form(...),
+    title: str = Form(''),
+    data: str = Form('{}'),
+):
+    """Save a creation to user history."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        token = request.cookies.get('vaaniverse_token', '')
+    user = auth.get_current_user(token)
+    if not user:
+        return JSONResponse({'ok': False, 'error': 'Login required'}, status_code=401)
+    try:
+        parsed = json.loads(data)
+    except Exception:
+        parsed = {'raw': data}
+    hid = db.save_history(user['id'], entry_type, title=title, data=parsed)
+    return JSONResponse({'ok': True, 'id': hid})
+
+
+@app.get('/history')
+def web_history(request: Request):
+    """Get user's creation history."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        token = request.cookies.get('vaaniverse_token', '')
+    user = auth.get_current_user(token)
+    if not user:
+        return JSONResponse({'ok': False, 'error': 'Login required'}, status_code=401)
+    items = db.get_history(user['id'])
+    return JSONResponse({'ok': True, 'history': items})

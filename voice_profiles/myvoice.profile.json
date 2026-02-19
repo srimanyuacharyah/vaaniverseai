@@ -1,0 +1,17 @@
+{
+  "name": "myvoice",
+  "sample_file": "voice_profiles\\myvoice_sample.m4a",
+  "original_sample": "C:\\Users\\student\\AppData\\Local\\Temp\\vaaniverse_uploads\\Tuesday, 3h28m pm.m4a",
+  "edge_voice": "kn-IN-GaganNeural",
+  "language": "kn",
+  "gender": "male",
+  "created_at": "2026-02-19T04:28:08.559177+00:00",
+  "consent_given": true,
+  "voice_analysis": {
+    "estimated_gender": null,
+    "pitch_hz": null,
+    "duration_seconds": 4.6,
+    "analysis_method": "file_size_heuristic"
+  },
+  "note": "This profile uses the closest-matching edge-tts neural voice. For true voice cloning, install Coqui TTS or RVC."
+}
