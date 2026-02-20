@@ -6,10 +6,20 @@
 
 /* ── Tab switching ── */
 function switchTab(tab) {
+    document.body.classList.add('in-feature');
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
-    document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+    const btn = document.querySelector('[data-tab="' + tab + '"]');
+    if (btn) btn.classList.add('active');
+}
+
+function showFeature(name) {
+    switchTab(name);
+}
+
+function exitToDashboard() {
+    document.body.classList.remove('in-feature');
 }
 
 /* ── Helpers ── */
@@ -484,37 +494,78 @@ async function doGenerateSong() {
     try {
         const res = await fetch('/generate-song', { method: 'POST', body });
         const data = await res.json();
-        document.getElementById('song-lyrics').textContent = data.lyrics;
-        const viz = document.getElementById('melody-viz'); viz.innerHTML = '';
-        (data.melody || []).forEach(note => {
-            const bar = document.createElement('div'); bar.className = 'melody-bar';
-            bar.style.height = Math.max(8, Math.min(100, ((note - 55) / 20) * 100)) + '%';
-            viz.appendChild(bar);
-        });
-        document.getElementById('song-result').classList.add('visible');
+        if (data.ok) {
+            lastLyrics = data.lyrics;
+            document.getElementById('song-lyrics').textContent = data.lyrics;
+            document.getElementById('translate-lyrics-btn').style.display = 'inline-flex';
 
-        // Play instrumental backing (Web Audio API live preview)
-        if (data.instrumental_config && !data.has_audio) {
-            playInstrumental(data.instrumental_config);
-            showStatus('song-status', '🎵 Instrumentals playing!', 'info');
-        }
-
-        // Vocal audio
-        if (data.has_audio) {
-            const lang = songMode === 'custom' ? document.getElementById('song-custom-lang').value : document.getElementById('song-lang').value;
-            const audioRes = await fetch('/song-audio?lang=' + lang);
-            if (audioRes.ok) {
-                const blob = await audioRes.blob(); const url = URL.createObjectURL(blob);
-                const audioEl = document.getElementById('song-audio');
-                audioEl.src = url;
+            // ENHANCED: Unified Audio + Lyrics
+            if (data.has_audio) {
                 document.getElementById('song-player').style.display = 'block';
-                audioEl.play();
-                // Spectrum visualizer
-                setupSpectrumViz(audioEl);
+                document.getElementById('song-audio').src = data.audio_path;
+                document.getElementById('song-audio').play();
+                setupSpectrumViz(document.getElementById('song-audio'));
+            } else if (data.instrumental_config) {
+                playInstrumental(data.instrumental_config);
+                showStatus('song-status', '🎵 Instrumentals playing!', 'info');
             }
+
+            const viz = document.getElementById('melody-viz'); viz.innerHTML = '';
+            (data.melody || []).forEach(note => {
+                const bar = document.createElement('div'); bar.className = 'melody-bar';
+                bar.style.height = Math.max(8, Math.min(100, ((note - 55) / 20) * 100)) + '%';
+                viz.appendChild(bar);
+            });
+            document.getElementById('song-result').classList.add('visible');
+
+            // Play instrumental backing (Web Audio API live preview)
+            if (data.instrumental_config && !data.has_audio) {
+                playInstrumental(data.instrumental_config);
+                showStatus('song-status', '🎵 Instrumentals playing!', 'info');
+            }
+
+            // Vocal audio
+            if (data.has_audio) {
+                const lang = songMode === 'custom' ? document.getElementById('song-custom-lang').value : document.getElementById('song-lang').value;
+                const audioRes = await fetch('/song-audio?lang=' + lang);
+                if (audioRes.ok) {
+                    const blob = await audioRes.blob(); const url = URL.createObjectURL(blob);
+                    const audioEl = document.getElementById('song-audio');
+                    audioEl.src = url;
+                    document.getElementById('song-player').style.display = 'block';
+                    audioEl.play();
+                    // Spectrum visualizer
+                    setupSpectrumViz(audioEl);
+                }
+            }
+            showStatus('song-status', '✅ Song created with instrumentals!', 'success');
+        } else {
+            showStatus('song-status', '❌ ' + data.error, 'error');
         }
-        showStatus('song-status', '✅ Song created with instrumentals!', 'success');
-    } catch (e) { showStatus('song-status', '❌ ' + e.message, 'error'); stopInstrumental(); }
+    } catch (e) {
+        showStatus('song-status', '❌ ' + e.message, 'error');
+        stopInstrumental();
+    }
+    setLoading(btn, false);
+}
+
+let lastLyrics = '';
+async function translateCurrentLyrics() {
+    const lang = prompt("Enter target language code (e.g., hi, ta, te, bn, fr):", "hi");
+    if (!lang) return;
+    const btn = document.getElementById('translate-lyrics-btn');
+    setLoading(btn, true);
+    try {
+        const res = await fetch('/translate', {
+            method: 'POST',
+            body: new URLSearchParams({ text: lastLyrics, target: lang })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('song-lyrics').innerHTML = data.translated.replace(/\n/g, '<br>');
+            showStatus('song-status', '✅ Lyrics translated to ' + lang, 'success');
+        }
+    } catch (e) { showStatus('song-status', '❌ Translation failed', 'error'); }
     setLoading(btn, false);
 }
 
@@ -820,19 +871,42 @@ function closeLoginModal() {
 }
 function setAuthMode(mode) {
     authMode = mode;
+    const isLanding = document.body.classList.contains('auth-landing');
+    const prefix = isLanding ? 'landing-' : 'auth-';
+
     document.getElementById('auth-title').textContent = mode === 'login' ? 'Login' : 'Sign Up';
-    document.getElementById('auth-email-group').style.display = mode === 'signup' ? 'block' : 'none';
-    document.getElementById('auth-login-btn').classList.toggle('active', mode === 'login');
-    document.getElementById('auth-signup-btn').classList.toggle('active', mode === 'signup');
-    document.getElementById('auth-submit-btn').querySelector('.btn-text').textContent = mode === 'login' ? '🔐 Login' : '✨ Sign Up';
+    document.getElementById(prefix + 'email-group').style.display = mode === 'signup' ? 'block' : 'none';
+
+    // Switch tabs in landing if needed
+    if (isLanding) {
+        document.getElementById('landing-login-tab').classList.toggle('active', mode === 'login');
+        document.getElementById('landing-signup-tab').classList.toggle('active', mode === 'signup');
+    } else {
+        document.getElementById('auth-login-btn').classList.toggle('active', mode === 'login');
+        document.getElementById('auth-signup-btn').classList.toggle('active', mode === 'signup');
+    }
+
+    const submitBtn = document.getElementById(isLanding ? 'landing-auth-btn' : 'auth-submit-btn');
+    submitBtn.querySelector('.btn-text').textContent = mode === 'login' ? '🔐 Login' : '✨ Sign Up';
 }
 async function doAuth() {
     const btn = document.getElementById('auth-submit-btn'); setLoading(btn, true);
-    const body = new FormData();
-    body.append('username', document.getElementById('auth-username').value);
-    body.append('password', document.getElementById('auth-password').value);
-    if (authMode === 'signup') body.append('email', document.getElementById('auth-email').value);
+    await performAuth('/login', 'auth-status', btn);
+}
+
+async function doLandingAuth() {
+    const btn = document.getElementById('landing-auth-btn'); setLoading(btn, true);
     const endpoint = authMode === 'login' ? '/login' : '/register';
+    await performAuth(endpoint, 'landing-auth-status', btn, true);
+}
+
+async function performAuth(endpoint, statusId, btn, isLanding = false) {
+    const prefix = isLanding ? 'landing-' : 'auth-';
+    const body = new FormData();
+    body.append('username', document.getElementById(prefix + 'username').value);
+    body.append('password', document.getElementById(prefix + 'password').value);
+    if (authMode === 'signup') body.append('email', document.getElementById(prefix + 'email')?.value || '');
+
     try {
         const res = await fetch(endpoint, { method: 'POST', body });
         const data = await res.json();
@@ -840,29 +914,108 @@ async function doAuth() {
             authToken = data.token;
             currentUser = data.user;
             localStorage.setItem('vaaniverse_token', authToken);
-            showStatus('auth-status', '✅ Welcome, ' + data.user.username + '!', 'success');
+            showStatus(statusId, '✅ Welcome, ' + data.user.username + '!', 'success');
             updateLoginUI();
-            setTimeout(closeLoginModal, 1000);
+            if (isLanding) {
+                setTimeout(() => {
+                    document.body.classList.remove('auth-landing');
+                    document.getElementById('auth-landing-overlay').style.opacity = '0';
+                    setTimeout(() => document.getElementById('auth-landing-overlay').style.display = 'none', 500);
+                }, 800);
+            } else {
+                setTimeout(closeLoginModal, 1000);
+            }
         } else {
-            showStatus('auth-status', '❌ ' + data.error, 'error');
+            showStatus(statusId, '❌ ' + data.error, 'error');
         }
-    } catch (e) { showStatus('auth-status', '❌ ' + e.message, 'error'); }
+    } catch (e) { showStatus(statusId, '❌ ' + e.message, 'error'); }
     setLoading(btn, false);
 }
 function updateLoginUI() {
     const btn = document.getElementById('login-tab-btn');
+
     if (currentUser) {
-        btn.textContent = '👤 ' + currentUser.username;
-        btn.onclick = doLogout;
-        document.getElementById('library-login-msg').style.display = 'none';
+        document.body.classList.remove('auth-landing');
+        document.getElementById('auth-landing-overlay').style.display = 'none';
+        document.getElementById('user-guide-overlay').style.display = 'none';
+
+        // STRICT LOCK: Enable the app
+        document.getElementById('main-app').style.display = 'block';
+
+        if (btn) {
+            btn.textContent = '👤 ' + currentUser.username;
+            btn.onclick = doLogout;
+        }
         document.getElementById('library-content').style.display = 'block';
         loadHistory();
     } else {
-        btn.textContent = '🔐 Login';
-        btn.onclick = openLoginModal;
-        document.getElementById('library-login-msg').style.display = 'block';
+        document.body.classList.add('auth-landing');
+        document.getElementById('main-app').style.display = 'none'; // Lock app
+        if (btn) {
+            btn.textContent = '🔐 Login';
+            btn.onclick = openLoginModal;
+        }
         document.getElementById('library-content').style.display = 'none';
     }
+}
+
+async function doGenerateStory() {
+    const theme = document.getElementById('story-theme').value;
+    const lang = document.getElementById('story-lang').value;
+    if (!theme) return alert("Please enter a theme!");
+
+    const btn = document.getElementById('story-btn');
+    setLoading(btn, true);
+    showStatus('story-status', '⏳ Crafting your magical story...', 'info');
+
+    const body = new FormData();
+    body.append('theme', theme);
+    body.append('lang', lang);
+
+    try {
+        const res = await fetch('/generate-story', { method: 'POST', body });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('story-result').style.display = 'block';
+            document.getElementById('story-text').textContent = data.text;
+
+            // Auto narrate story
+            const ttsBody = new URLSearchParams({ text: data.text, voice_id: 'en-US-AriaNeural' });
+            const narRes = await fetch('/tts', { method: 'POST', body: ttsBody });
+            if (narRes.ok) {
+                const blob = await narRes.blob();
+                document.getElementById('story-audio').src = URL.createObjectURL(blob);
+                document.getElementById('story-player').style.display = 'block';
+            }
+            showStatus('story-status', '📖 Story generated!', 'success');
+        }
+    } catch (e) { showStatus('story-status', '❌ Failed to generate story', 'error'); }
+    setLoading(btn, false);
+}
+
+async function doAnalyzeSentiment() {
+    const text = document.getElementById('sentiment-text').value;
+    if (!text) return alert("Enter text to analyze!");
+
+    const btn = document.getElementById('sentiment-btn');
+    setLoading(btn, true);
+    showStatus('sentiment-status', '🔍 Analyzing emotional frequencies...', 'info');
+
+    const body = new FormData();
+    body.append('text', text);
+
+    try {
+        const res = await fetch('/analyze-sentiment', { method: 'POST', body });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('sentiment-result').style.display = 'block';
+            document.getElementById('sentiment-label').textContent = data.sentiment;
+            document.getElementById('sentiment-score').textContent = (data.score * 100).toFixed(0) + '% Confidence';
+            document.getElementById('sentiment-bar').style.width = (data.score * 100) + '%';
+            showStatus('sentiment-status', '🌈 Analysis complete!', 'success');
+        }
+    } catch (e) { showStatus('sentiment-status', '❌ Analysis failed', 'error'); }
+    setLoading(btn, false);
 }
 function doLogout() {
     authToken = ''; currentUser = null;
@@ -871,41 +1024,141 @@ function doLogout() {
 }
 
 /* ══════════════════ HISTORY / LIBRARY ══════════════════ */
+let allHistory = [];
 async function loadHistory() {
     if (!authToken) return;
     try {
         const res = await fetch('/history', { headers: { 'Authorization': 'Bearer ' + authToken } });
         const data = await res.json();
         if (data.ok && data.history) {
-            const list = document.getElementById('history-list');
-            if (data.history.length === 0) {
-                document.getElementById('history-empty').style.display = 'block';
-                list.innerHTML = '';
-                return;
-            }
-            document.getElementById('history-empty').style.display = 'none';
-            list.innerHTML = data.history.map(h => `
-                <div class="card" style="margin-bottom:12px;padding:12px">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <div>
-                            <span class="lang-tag">${h.type}</span>
-                            <strong>${h.title || 'Untitled'}</strong>
-                            <small style="color:var(--text-muted);margin-left:8px">${h.created_at}</small>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            allHistory = data.history;
+            renderHistory(allHistory);
         }
-    } catch (e) { /* silent */ }
+    } catch (e) { console.error('History load failed', e); }
 }
 
-// Auto-check login on page load
-(async function checkAuth() {
-    if (!authToken) return;
+function renderHistory(items) {
+    const list = document.getElementById('history-list');
+    if (items.length === 0) {
+        document.getElementById('history-empty').style.display = 'block';
+        list.innerHTML = '';
+        return;
+    }
+    document.getElementById('history-empty').style.display = 'none';
+    const icons = { translate: '🌐', tts: '🔊', song: '🎵', clone: '🎤', clone_speak: '🗣️', voice_translate: '🌐', voice_translate_audio: '🎙️', studio: '🎚️' };
+
+    list.innerHTML = items.map(h => `
+        <div class="history-card">
+            <div class="history-type-icon">${icons[h.type] || '✨'}</div>
+            <div class="history-info">
+                <span class="history-title">${h.title || 'Untitled Creation'}</span>
+                <span class="history-meta">${h.type.replace(/_/g, ' ').toUpperCase()} • ${h.created_at}</span>
+            </div>
+            ${h.audio_path ? `
+                <button class="btn btn-secondary btn-sm" onclick="playHistoryAudio(${h.id})">▶️ Play</button>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+function filterHistory(query) {
+    const q = query.toLowerCase();
+    const filtered = allHistory.filter(h =>
+        h.title.toLowerCase().includes(q) ||
+        h.type.toLowerCase().includes(q)
+    );
+    renderHistory(filtered);
+}
+
+function playHistoryAudio(hid) {
+    const audio = new Audio(`/history-audio/${hid}?token=${authToken}`);
+    audio.play().catch(e => alert("Playback failed: " + e.message));
+}
+
+// Auto-init and transitions
+window.onload = () => {
+    // Stage 1: Splash Screen
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                // Stage 2: User Guide (only if not logged in)
+                if (!localStorage.getItem('vaaniverse_token')) {
+                    document.getElementById('user-guide-overlay').style.display = 'flex';
+                } else {
+                    checkAuth();
+                }
+            }, 800);
+        }
+    }, 2000);
+};
+
+async function checkAuth() {
+    if (!authToken) {
+        const stored = localStorage.getItem('vaaniverse_token');
+        if (stored) authToken = stored;
+        else return;
+    }
     try {
         const res = await fetch('/me', { headers: { 'Authorization': 'Bearer ' + authToken } });
         const data = await res.json();
         if (data.ok) { currentUser = data.user; updateLoginUI(); }
         else { authToken = ''; localStorage.removeItem('vaaniverse_token'); }
     } catch (e) { /* not logged in */ }
-})();
+}
+
+function proceedToAuth() {
+    const guide = document.getElementById('user-guide-overlay');
+    guide.style.opacity = '0';
+    setTimeout(() => {
+        guide.style.display = 'none';
+        document.getElementById('auth-landing-overlay').style.display = 'flex';
+    }, 500);
+}
+
+async function translateGuide(lang) {
+    if (lang === 'en') {
+        renderGuideContent("en");
+        return;
+    }
+    const content = document.getElementById('guide-content').innerText;
+    try {
+        const res = await fetch('/translate', {
+            method: 'POST',
+            body: new URLSearchParams({ text: content, target: lang })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('guide-title').innerText = await translateText("Welcome to Vaaniverse AI", lang);
+            document.getElementById('guide-content').innerHTML = data.translated.split('\n').map(p => `<p>${p}</p>`).join('');
+        }
+    } catch (e) { console.error("Guide translation failed", e); }
+}
+
+async function translateText(text, lang) {
+    try {
+        const res = await fetch('/translate', {
+            method: 'POST',
+            body: new URLSearchParams({ text, target: lang })
+        });
+        const data = await res.json();
+        return data.ok ? data.translated : text;
+    } catch (e) { return text; }
+}
+
+function renderGuideContent(lang) {
+    if (lang === 'en') {
+        document.getElementById('guide-title').innerText = "Welcome to Vaaniverse AI";
+        document.getElementById('guide-content').innerHTML = `
+            <p>Vaaniverse AI is your all-in-one platform for voice intelligence:</p>
+            <ul>
+              <li><strong>🌐 Translate:</strong> Break language barriers instantly.</li>
+              <li><strong>🔊 TTS:</strong> Convert text to 300+ life-like voices.</li>
+              <li><strong>🎤 Clone:</strong> Create digital versions of any voice.</li>
+              <li><strong>✍️ Lyrics:</strong> Generate and translate lyrics for any genre.</li>
+            </ul>
+        `;
+    }
+}
