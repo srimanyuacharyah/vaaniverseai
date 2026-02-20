@@ -4,6 +4,11 @@ services:
     env: docker
     plan: free
     region: oregon
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PORT
-        value: 8000
+        value: "8000"
+      - key: VAANIVERSE_DB
+        value: /tmp/vaaniverse.db
+      - key: GOOGLE_API_KEY
+        sync: false

@@ -1,0 +1,8 @@
+{
+  "signer": "myvoice",
+  "timestamp": "2026-02-20T16:30:57.974048Z",
+  "sample": "recording.webm",
+  "sample_hash": "370ae1f03bb9cbce77f6c9e9d276aa9468a473faa30ef65a889599718213fdcf",
+  "notes": "Recorded via web UI",
+  "hmac": ""
+}

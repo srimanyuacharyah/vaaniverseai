@@ -349,9 +349,20 @@ def generate_lyrics(theme: str = 'love', lang: str = 'hi', lines: int = 4) -> st
 def generate_long_lyrics(theme: str = 'love', lang: str = 'hi') -> str:
     """Generate a full-length song (2–3 minutes when spoken).
 
-    Produces ~25–35 lines with verse/chorus/bridge structure so that
-    edge-tts synthesis lasts 2–3 minutes.
+    Uses Gemini AI for creative lyrics when available, otherwise falls back
+    to the template system producing ~25–35 lines with verse/chorus/bridge
+    structure so that edge-tts synthesis lasts 2–3 minutes.
     """
+    # Try AI-generated lyrics first
+    try:
+        from . import ai_service
+        ai_lyrics = ai_service.generate_lyrics(theme=theme, lang=lang, genre='bollywood', lines=30)
+        if ai_lyrics and len(ai_lyrics) > 100:
+            return ai_lyrics
+    except Exception:
+        pass
+
+    # Fallback: template-based generation
     verse_lines = 5
     chorus_lines = 3
     all_lines: list[str] = []
@@ -680,9 +691,28 @@ async def generate_song_audio_async(
 
     if out_path is None:
         out_path = os.path.join(tempfile.gettempdir(), f"song_{lang}_{os.getpid()}.mp3")
+    
     try:
-        audio = await edge_tts_engine.speak_singing_async(song['lyrics'], lang=lang, gender=gender, out_path=out_path)
-        song['audio_path'] = audio
+        # 1. Generate Vocal Audio (Melodic synthesis)
+        vocal_path = await edge_tts_engine.speak_singing_async(song['lyrics'], lang=lang, gender=gender)
+        
+        # 2. Render Instrumental Backing
+        inst_path = render_instrumental_wav(instrumental_cfg)
+        
+        # 3. Merge them with pydub
+        from pydub import AudioSegment
+        vocals = AudioSegment.from_file(vocal_path)
+        backing = AudioSegment.from_file(inst_path)
+        
+        # Mix: decrease backing volume so vocals are clear
+        backing = backing - 8
+        vocals = vocals + 2
+        
+        # Match lengths (or at least ensure they overlap)
+        combined = backing.overlay(vocals)
+        combined.export(out_path, format="mp3")
+        
+        song['audio_path'] = out_path
     except Exception as e:
         song['audio_path'] = None
         song['audio_error'] = str(e)

@@ -8,796 +8,1027 @@
   <meta name="description"
     content="AI-powered multilingual voice translation, song generation, and text-to-speech for Indian languages">
   <link rel="stylesheet" href="/static/style.css">
-  <meta name="theme-color" content="#0a0a1a">
+  <meta name="theme-color" content="#030014">
 </head>
 
-<body class="auth-landing">
+<body>
 
-  <!-- Stage 1: Splash Screen -->
+  <!-- ════════════ STAGE 1: Splash Screen ════════════ -->
   <div id="splash-screen">
-    <div class="splash-logo">🎙️</div>
+    <div class="splash-logo">🎵</div>
     <div class="splash-title">Vaaniverse AI</div>
+    <div class="splash-tagline">Voice & Song Intelligence Platform</div>
   </div>
 
-  <!-- Stage 2: User Guide -->
+  <!-- ════════════ STAGE 2: User Guide Overlay ════════════ -->
   <div id="user-guide-overlay">
     <div class="guide-card">
-      <div style="font-size: 3.5rem; margin-bottom: 20px;">💎</div>
-      <h2 id="guide-title">Ultra Intelligence: Vaaniverse</h2>
-      <div id="guide-content" style="text-align: left; margin-bottom: 30px; line-height: 1.6;">
-        <p>Experience the future of AI voice and audio:</p>
-        <ul style="list-style: none; padding: 0;">
-          <li>✨ <strong>Oceanic Aurora:</strong> A stunning high-end interface.</li>
-          <li>📖 <strong>Storyteller AI:</strong> Magical bedtime stories narrated by AI.</li>
-          <li>🌈 <strong>Voice Sentiment:</strong> Analyze emotions in any tone.</li>
-          <li>🎙️ <strong>Lyrics & Audio:</strong> Total song production in seconds.</li>
+      <h2 id="guide-title">Welcome to Vaaniverse AI</h2>
+      <div id="guide-content">
+        <p>Your all-in-one platform for voice intelligence:</p>
+        <ul>
+          <li><strong>🌐 Translate:</strong> Break language barriers instantly</li>
+          <li><strong>🔊 TTS:</strong> Convert text to 300+ life-like voices</li>
+          <li><strong>🎤 Clone:</strong> Create digital versions of any voice</li>
+          <li><strong>🎵 Songs:</strong> Generate & sing lyrics in any genre</li>
+          <li><strong>🎙️ Podcast:</strong> Generate AI podcasts on any topic</li>
+          <li><strong>🎤 Karaoke:</strong> Sing along with timed lyrics</li>
         </ul>
       </div>
-
-      <div class="form-group" style="margin-bottom: 24px;">
-        <label>Select Guide Language:</label>
-        <select id="guide-lang" onchange="translateGuide(this.value)" style="width: 100%;">
-          <option value="en">English (Aurora)</option>
-          <option value="hi">Hindi (हिन्दी)</option>
-          <option value="ta">Tamil (தமிழ்)</option>
-          <option value="te">Telugu (తెలుగు)</option>
-          <option value="bn">Bengali (বাংলা)</option>
-        </select>
+      <div class="guide-lang-btns">
+        <button onclick="translateGuide('en')">English</button>
+        <button onclick="translateGuide('hi')">हिंदी</button>
+        <button onclick="translateGuide('te')">తెలుగు</button>
+        <button onclick="translateGuide('ta')">தமிழ்</button>
+        <button onclick="translateGuide('kn')">ಕನ್ನಡ</button>
       </div>
-
-      <button class="btn btn-primary" onclick="proceedToAuth()"
-        style="width: 100%; justify-content: center; height: 56px;">
-        Enter Vaaniverse ➔
+      <button class="btn btn-primary btn-block" onclick="proceedToAuth()" style="margin-top:20px">
+        <span class="btn-text">✨ Get Started</span>
       </button>
     </div>
   </div>
 
-  <!-- Strict Auth Lockdown: The app is HIDDEN until logged in -->
-  <div id="main-app" style="display: none;">
-
-    <!-- Stage 3: Auth Landing Overlay (Enforced Login) -->
-    <div id="auth-landing-overlay" style="display:none">
-      <div class="auth-landing-card">
-        <div style="font-size: 3rem; margin-bottom: 20px;">🎙️</div>
-        <h2>Welcome to Vaaniverse AI</h2>
-        <p>The ultimate multilingual voice & song intelligence platform. Login to access your dashboard, creation
-          history,
-          and premium AI voices.</p>
-
-        <div class="mode-toggle" style="margin-bottom:24px">
-          <button class="mode-btn active" id="landing-login-tab" onclick="setAuthMode('login')">Login</button>
-          <button class="mode-btn" id="landing-signup-tab" onclick="setAuthMode('signup')">Sign Up</button>
-        </div>
-
-        <div class="form-group" style="text-align: left;">
+  <!-- ════════════ STAGE 3: Auth Landing ════════════ -->
+  <div id="auth-landing-overlay">
+    <div class="auth-landing-card">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎵</div>
+      <h2>Vaaniverse AI</h2>
+      <p>Sign in to access all voice intelligence features</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="landing-login-tab" onclick="setAuthMode('login')">Login</button>
+        <button class="auth-tab" id="landing-signup-tab" onclick="setAuthMode('signup')">Sign Up</button>
+      </div>
+      <div class="auth-form">
+        <div class="form-group">
           <label>Username</label>
-          <input type="text" id="landing-username" placeholder="Enter username">
+          <input type="text" id="landing-username" placeholder="Enter your username" autocomplete="username">
         </div>
-        <div class="form-group" id="landing-email-group" style="text-align: left; display: none;">
-          <label>Email <small>(optional)</small></label>
-          <input type="email" id="landing-email" placeholder="you@example.com">
+        <div class="form-group" id="landing-email-group" style="display:none">
+          <label>Email</label>
+          <input type="email" id="landing-email" placeholder="your@email.com" autocomplete="email">
         </div>
-        <div class="form-group" style="text-align: left;">
+        <div class="form-group">
           <label>Password</label>
-          <input type="password" id="landing-password" placeholder="Enter password">
+          <input type="password" id="landing-password" placeholder="••••••••" autocomplete="current-password">
         </div>
-
-        <button class="btn btn-primary btn-lg" style="width: 100%; justify-content: center;" onclick="doLandingAuth()"
-          id="landing-auth-btn">
-          <span class="spinner"></span><span class="btn-text">🔐 Get Started</span>
+        <div id="landing-auth-status" class="status"></div>
+        <button class="btn btn-primary btn-block" id="landing-auth-btn" onclick="doLandingAuth()"
+          style="margin-top:16px">
+          <span class="btn-text">🔐 Login</span>
         </button>
-        <div class="status" id="landing-auth-status"></div>
       </div>
     </div>
+  </div>
 
-    <div class="header">
-      <div class="header-content">
-        <h1>🎙 Vaaniverse AI</h1>
-        <p>Multilingual Voice & Song Intelligence</p>
-        <div class="badge-row">
-          <span class="badge">✨ INDIAN LANGUAGES</span>
-          <span class="badge">🔊 300+ VOICES</span>
-          <span class="badge">💎 PREMIUM</span>
+  <!-- ════════════ MAIN APP (Locked until auth) ════════════ -->
+  <div id="main-app">
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">🎵</span>
+        <span class="brand-name">Vaaniverse AI</span>
+        <span class="brand-tag">Voice Intelligence</span>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active" data-tab="dashboard" onclick="showDashboard()">
+          <span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span>
+        </div>
+        <div class="nav-divider"></div>
+        <div class="nav-item" data-tab="translate" onclick="showFeature('translate')">
+          <span class="nav-icon">🌐</span><span class="nav-label">Translate</span>
+        </div>
+        <div class="nav-item" data-tab="tts" onclick="showFeature('tts')">
+          <span class="nav-icon">🔊</span><span class="nav-label">Text to Speech</span>
+        </div>
+        <div class="nav-item" data-tab="translator" onclick="showFeature('translator')">
+          <span class="nav-icon">🗣️</span><span class="nav-label">Voice Translator</span>
+        </div>
+        <div class="nav-item" data-tab="song" onclick="showFeature('song')">
+          <span class="nav-icon">🎵</span><span class="nav-label">Song Generator</span>
+        </div>
+        <div class="nav-item" data-tab="clone" onclick="showFeature('clone')">
+          <span class="nav-icon">🎤</span><span class="nav-label">Voice Clone</span>
+        </div>
+        <div class="nav-item" data-tab="legendary" onclick="showFeature('legendary')">
+          <span class="nav-icon">👑</span><span class="nav-label">Legendary Voices</span>
+        </div>
+        <div class="nav-divider"></div>
+        <div class="nav-item" data-tab="podcast" onclick="showFeature('podcast')">
+          <span class="nav-icon">🎙️</span><span class="nav-label">AI Podcast</span>
+        </div>
+        <div class="nav-item" data-tab="karaoke" onclick="showFeature('karaoke')">
+          <span class="nav-icon">🎤</span><span class="nav-label">Karaoke Mode</span>
+        </div>
+        <div class="nav-item" data-tab="ringtone" onclick="showFeature('ringtone')">
+          <span class="nav-icon">📱</span><span class="nav-label">Ringtone Creator</span>
+        </div>
+        <div class="nav-item" data-tab="mashup" onclick="showFeature('mashup')">
+          <span class="nav-icon">🎛️</span><span class="nav-label">Audio Mashup</span>
+        </div>
+        <div class="nav-item" data-tab="mood" onclick="showFeature('mood')">
+          <span class="nav-icon">🌈</span><span class="nav-label">Voice Mood Board</span>
+        </div>
+        <div class="nav-divider"></div>
+        <div class="nav-item" data-tab="studio" onclick="showFeature('studio')">
+          <span class="nav-icon">🎚️</span><span class="nav-label">Audio Studio</span>
+        </div>
+        <div class="nav-item" data-tab="story" onclick="showFeature('story')">
+          <span class="nav-icon">📖</span><span class="nav-label">Storyteller AI</span>
+        </div>
+        <div class="nav-item" data-tab="sentiment" onclick="showFeature('sentiment')">
+          <span class="nav-icon">💭</span><span class="nav-label">Sentiment</span>
+        </div>
+        <div class="nav-item" data-tab="library" onclick="showFeature('library')">
+          <span class="nav-icon">📚</span><span class="nav-label">My Library</span>
         </div>
       </div>
-    </div>
-
-    <nav class="tab-nav" id="tabNav">
-      <button class="tab-btn active" data-tab="translate" onclick="switchTab('translate')">🌐 Translate</button>
-      <button class="tab-btn" data-tab="tts" onclick="switchTab('tts')">🔊 TTS</button>
-
-      <button class="tab-btn" data-tab="song" onclick="switchTab('song')">🎵 Song</button>
-      <button class="tab-btn" data-tab="clone" onclick="switchTab('clone')">🎤 Clone</button>
-      <button class="tab-btn" data-tab="translator" onclick="switchTab('translator')">🌐 Translator</button>
-      <button class="tab-btn" data-tab="studio" onclick="switchTab('studio')">🎚️ Studio</button>
-      <button class="tab-btn" data-tab="library" onclick="switchTab('library')">📚 Library</button>
-      <div style="flex: 1"></div>
-      <button class="tab-btn" id="login-tab-btn" onclick="openLoginModal()"
-        style="border-radius: 30px; background: rgba(255,255,255,0.1);">🔐 Login</button>
+      <div class="sidebar-user" id="sidebar-user">
+        <div class="user-avatar" id="user-avatar-letter">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebar-username">User</div>
+          <div class="user-role">Pro Member</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">🚪</button>
+      </div>
     </nav>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    <div class="container">
-      <!-- Main Dashboard -->
+    <!-- ── Main Content Area ── -->
+    <main class="main-content">
+
+      <!-- ═══ DASHBOARD ═══ -->
       <div id="main-dashboard">
+        <div class="page-header">
+          <h1>Welcome to Vaaniverse AI</h1>
+          <p>Choose a feature to get started with voice intelligence</p>
+        </div>
         <div class="dashboard-grid">
           <div class="feature-card" onclick="showFeature('translate')">
             <div class="feature-icon">🌐</div>
-            <div class="feature-name">Translation</div>
-            <div class="feature-desc">Translate text between 100+ languages including Indian dialects.</div>
+            <div class="feature-name">Translate</div>
+            <div class="feature-desc">Break language barriers with AI translation</div>
           </div>
           <div class="feature-card" onclick="showFeature('tts')">
             <div class="feature-icon">🔊</div>
-            <div class="feature-name">Text-to-Speech</div>
-            <div class="feature-desc">Convert articles or messages into high-quality human speech.</div>
+            <div class="feature-name">Text to Speech</div>
+            <div class="feature-desc">300+ lifelike voices in multiple languages</div>
+          </div>
+          <div class="feature-card" onclick="showFeature('song')">
+            <div class="feature-icon">🎵</div>
+            <div class="feature-name">Song Generator</div>
+            <div class="feature-desc">Create songs with AI singing & instrumentals</div>
+            <span class="feature-badge">AI Singing</span>
           </div>
           <div class="feature-card" onclick="showFeature('clone')">
             <div class="feature-icon">🎤</div>
             <div class="feature-name">Voice Clone</div>
-            <div class="feature-desc">Upload a sample and generate speech in your own digital twin.</div>
+            <div class="feature-desc">Create a digital twin of any voice</div>
           </div>
-          <div class="feature-card" onclick="showFeature('song')">
-            <div class="feature-icon">✍️</div>
-            <div class="feature-name">Lyrics Generator</div>
-            <div class="feature-desc">AI-powered lyrics creation and translation for any style.</div>
+          <div class="feature-card" onclick="showFeature('translator')">
+            <div class="feature-icon">🗣️</div>
+            <div class="feature-name">Voice Translator</div>
+            <div class="feature-desc">Speech-to-speech translation in real time</div>
+          </div>
+          <div class="feature-card" onclick="showFeature('podcast')">
+            <div class="feature-icon">🎙️</div>
+            <div class="feature-name">AI Podcast</div>
+            <div class="feature-desc">Generate dual-voice podcasts on any topic</div>
+            <span class="feature-badge">New</span>
+          </div>
+          <div class="feature-card" onclick="showFeature('karaoke')">
+            <div class="feature-icon">🎤</div>
+            <div class="feature-name">Karaoke Mode</div>
+            <div class="feature-desc">Sing along with timed lyrics highlighting</div>
+            <span class="feature-badge">New</span>
+          </div>
+          <div class="feature-card" onclick="showFeature('ringtone')">
+            <div class="feature-icon">📱</div>
+            <div class="feature-name">Ringtone Creator</div>
+            <div class="feature-desc">Generate custom ringtones from genres</div>
+            <span class="feature-badge">New</span>
+          </div>
+          <div class="feature-card" onclick="showFeature('mashup')">
+            <div class="feature-icon">🎛️</div>
+            <div class="feature-name">Audio Mashup</div>
+            <div class="feature-desc">Mix & blend two audio tracks together</div>
+            <span class="feature-badge">New</span>
+          </div>
+          <div class="feature-card" onclick="showFeature('mood')">
+            <div class="feature-icon">🌈</div>
+            <div class="feature-name">Voice Mood Board</div>
+            <div class="feature-desc">Detect mood & match with perfect voice</div>
+            <span class="feature-badge">New</span>
+          </div>
+          <div class="feature-card" onclick="showFeature('legendary')">
+            <div class="feature-icon">👑</div>
+            <div class="feature-name">Legendary Voices</div>
+            <div class="feature-desc">Speak in iconic legendary voice styles</div>
           </div>
           <div class="feature-card" onclick="showFeature('studio')">
             <div class="feature-icon">🎚️</div>
-            <div class="feature-name">Voice Studio</div>
-            <div class="feature-desc">Edit, enhance, and apply effects to your audio creations.</div>
-          </div>
-          <div class="feature-card" onclick="showFeature('story')">
-            <div class="feature-icon">📖</div>
-            <div class="feature-name">Storyteller AI</div>
-            <div class="feature-desc">Generate magical bedtime stories with instant AI narration.</div>
-          </div>
-          <div class="feature-card" onclick="showFeature('sentiment')">
-            <div class="feature-icon">🌈</div>
-            <div class="feature-name">Voice Sentiment</div>
-            <div class="feature-desc">Analyze the emotional depth and tone of any audio or text.</div>
-          </div>
-          <div class="feature-card" onclick="showFeature('library')">
-            <div class="feature-icon">📚</div>
-            <div class="feature-name">Media Library</div>
-            <div class="feature-desc">Access and replay your history of generated content.</div>
+            <div class="feature-name">Audio Studio</div>
+            <div class="feature-desc">Professional audio effects & editing</div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 1 — TRANSLATE -->
-      <div class="tab-panel active" id="tab-translate">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+      <!-- ═══ TRANSLATE TAB ═══ -->
+      <div class="tab-panel" id="tab-translate">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🌐 Translate</h1>
+          <p>AI-powered multilingual text translation</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">🌐</span> Multi-Language Translator</div>
-          <p class="card-desc">Translate text between English and 10+ Indian languages instantly.</p>
           <div class="form-group">
-            <label>Enter text</label>
-            <textarea id="translate-text"
-              placeholder="Type something in any language...">Hello, welcome to Vaaniverse AI!</textarea>
+            <label>Text to Translate</label>
+            <textarea id="translate-text" rows="4" placeholder="Enter text in any language..."></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Source Language</label>
               <select id="translate-src">
-                <option value="auto">Auto-Detect</option>
-                {% for code, name in languages.items() %}
-                <option value="{{ code }}">{{ name }}</option>
-                {% endfor %}
+                <option value="auto">Auto Detect</option>
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="bn">Bengali</option>
+                <option value="mr">Marathi</option>
+                <option value="gu">Gujarati</option>
+                <option value="pa">Punjabi</option>
+                <option value="ur">Urdu</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh-CN">Chinese</option>
+                <option value="ar">Arabic</option>
+                <option value="ru">Russian</option>
               </select>
             </div>
             <div class="form-group">
               <label>Target Language</label>
               <select id="translate-tgt">
-                {% for code, name in languages.items() %}
-                <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>
-                {% endfor %}
+                <option value="hi">Hindi</option>
+                <option value="en">English</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="bn">Bengali</option>
+                <option value="mr">Marathi</option>
+                <option value="gu">Gujarati</option>
+                <option value="pa">Punjabi</option>
+                <option value="ur">Urdu</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh-CN">Chinese</option>
+                <option value="ar">Arabic</option>
+                <option value="ru">Russian</option>
               </select>
             </div>
           </div>
-          <div class="btn-group">
-            <button class="btn btn-primary" onclick="doTranslate()"><span class="spinner"></span><span
-                class="btn-text">🌐
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" id="translate-btn" onclick="doTranslate(event)"><span class="btn-text">🌐
                 Translate</span></button>
-            <button class="btn btn-secondary" onclick="doBatchTranslate()">All Languages</button>
+            <button class="btn btn-secondary" id="batch-translate-btn" onclick="doBatchTranslate(event)"><span
+                class="btn-text">📋 Translate to All</span></button>
           </div>
-          <div class="result-box" id="translate-result">
-            <div class="result-label">Translation</div>
-            <div class="result-text" id="translate-output"></div>
+          <div id="translate-result" class="result-panel">
+            <div class="card-title">Translation</div>
+            <div id="translate-output" class="result-text"></div>
           </div>
-          <div class="result-box" id="batch-result">
-            <div class="result-label">All Translations</div>
-            <div class="result-text" id="batch-output"></div>
+          <div id="batch-result" class="result-panel">
+            <div class="card-title">All Translations</div>
+            <div id="batch-output" class="result-text"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 2 — TTS -->
+      <!-- ═══ TTS TAB ═══ -->
       <div class="tab-panel" id="tab-tts">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🔊 Text to Speech</h1>
+          <p>Convert text to natural-sounding speech</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">🔊</span> Text-to-Speech</div>
-          <p class="card-desc">Convert text to natural-sounding speech in Indian languages using AI voices.</p>
-          <div class="form-group"><label>Text to speak</label><textarea id="tts-text"
-              placeholder="Enter text...">नमस्ते, वानीवर्स एआई में आपका स्वागत है!</textarea></div>
+          <div class="form-group">
+            <label>Text to Speak</label>
+            <textarea id="tts-text" rows="4" placeholder="Enter text to convert to speech..."></textarea>
+          </div>
           <div class="form-row">
-            <div class="form-group"><label>Language</label><select id="tts-lang">{% for code, name in languages.items()
-                %}
-                <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor %}
+            <div class="form-group">
+              <label>Language</label>
+              <select id="tts-lang">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="bn">Bengali</option>
+                <option value="mr">Marathi</option>
+                <option value="gu">Gujarati</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
               </select>
             </div>
-            <div class="form-group"><label>Voice</label><select id="tts-gender">
+            <div class="form-group">
+              <label>Voice Gender</label>
+              <select id="tts-gender">
                 <option value="female">Female</option>
                 <option value="male">Male</option>
-              </select></div>
-            <div class="form-group"><label>Backend</label><select id="tts-backend">{% for b in backends %}<option
-                  value="{{ b }}">{{ b | capitalize }}</option>{% endfor %}</select></div>
+              </select>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="doSpeak()"><span class="spinner"></span><span class="btn-text">🔊
-              Generate Speech</span></button>
-          <div class="status" id="tts-status"></div>
-          <div class="audio-player" id="tts-player" style="display:none"><audio controls id="tts-audio"></audio></div>
+          <div class="form-group">
+            <label>TTS Engine</label>
+            <select id="tts-backend">
+              <option value="edge">Edge TTS (Cloud, Best Quality)</option>
+              <option value="local">Local (Offline)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="tts-btn" onclick="doSpeak(event)"><span class="btn-text">🔊 Generate
+              Speech</span></button>
+          <div id="tts-status" class="status"></div>
+          <div id="tts-player" class="audio-player" style="display:none">
+            <audio id="tts-audio" controls></audio>
+          </div>
         </div>
       </div>
 
-
-
-      <!-- TAB 3 — LYRICS GENERATOR -->
-      <div class="tab-panel" id="tab-song">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+      <!-- ═══ VOICE TRANSLATOR TAB ═══ -->
+      <div class="tab-panel" id="tab-translator">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🗣️ Voice Translator</h1>
+          <p>Translate text, recorded speech, or uploaded audio</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">✍️</span> AI Lyrics Generator <span
-              class="lang-tag">Suno-style</span>
-          </div>
-          <p class="card-desc">Generate creative lyrics. You can translate them to any language after creation.
-          </p>
-
           <div class="mode-toggle">
-            <button class="mode-btn active" onclick="setSongMode('generate')" id="song-mode-generate">🎲
-              Auto-Generate</button>
-            <button class="mode-btn" onclick="setSongMode('custom')" id="song-mode-custom">✍️ Custom Lyrics</button>
-            <button class="mode-btn" onclick="setSongMode('instrumental')" id="song-mode-instrumental">🎹 Instrumental
-              Only</button>
+            <button class="mode-btn active" id="trans-mode-text" onclick="setTranslatorMode('text')">✍️ Text</button>
+            <button class="mode-btn" id="trans-mode-record" onclick="setTranslatorMode('record')">🎤 Record</button>
+            <button class="mode-btn" id="trans-mode-upload" onclick="setTranslatorMode('upload')">📁 Upload</button>
           </div>
-
-          <!-- Genre selector -->
-          <div class="form-group"><label>Genre</label>
-            <div class="genre-grid" id="genre-grid">
-              {% for gid, g in genres.items() %}
-              <div class="genre-card {{ 'active' if gid=='bollywood' else '' }}" data-genre="{{ gid }}"
-                onclick="selectGenre('{{ gid }}')">
-                <span class="genre-emoji">{{ g.emoji }}</span>
-                <span class="genre-name">{{ g.name }}</span>
-                <span class="genre-bpm">{{ g.default_bpm }} BPM</span>
-              </div>
-              {% endfor %}
+          <div class="form-group">
+            <label>Target Language</label>
+            <select id="trans-tgt-lang">
+              <option value="hi">Hindi</option>
+              <option value="en">English</option>
+              <option value="te">Telugu</option>
+              <option value="ta">Tamil</option>
+              <option value="kn">Kannada</option>
+              <option value="ml">Malayalam</option>
+              <option value="bn">Bengali</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="es">Spanish</option>
+            </select>
+          </div>
+          <!-- Text mode -->
+          <div id="translator-text-ui">
+            <div class="form-group"><textarea id="trans-text-input" rows="3"
+                placeholder="Enter text to translate..."></textarea></div>
+            <button class="btn btn-primary" id="trans-text-btn" onclick="doTranslateText(event)"><span
+                class="btn-text">🌐 Translate
+                Text</span></button>
+          </div>
+          <!-- Record mode -->
+          <div id="translator-record-ui" style="display:none">
+            <div style="text-align:center;padding:20px">
+              <button class="btn btn-primary" id="trans-record-btn" onclick="toggleTranslatorRecording()"
+                style="width:80px;height:80px;border-radius:50%;font-size:2rem;padding:0">
+                <span class="btn-text">🎤</span>
+              </button>
+              <p id="trans-status-text" style="margin-top:12px;color:var(--text-secondary);font-size:.85rem">Tap to
+                start recording</p>
+              <div id="trans-viz"></div>
             </div>
           </div>
-
-          <!-- Instruments -->
-          <div class="form-group"><label>Instruments</label>
-            <div class="instrument-toggles">
-              <label class="inst-toggle"><input type="checkbox" id="inst-drums" checked><span
-                  class="inst-icon">🥁</span>
-                Drums</label>
-              <label class="inst-toggle"><input type="checkbox" id="inst-bass" checked><span class="inst-icon">🎸</span>
-                Bass</label>
-              <label class="inst-toggle"><input type="checkbox" id="inst-guitar"><span class="inst-icon">🎸</span>
-                Guitar</label>
-              <label class="inst-toggle"><input type="checkbox" id="inst-piano" checked><span
-                  class="inst-icon">🎹</span>
-                Piano</label>
-              <label class="inst-toggle"><input type="checkbox" id="inst-synth" checked><span
-                  class="inst-icon">🎛️</span>
-                Synth</label>
+          <!-- Upload mode -->
+          <div id="translator-upload-ui" style="display:none">
+            <label class="upload-zone" id="trans-file-label" for="trans-file">📁 Click to upload audio
+              file<br><small>WAV, MP3, M4A, OGG, WEBM</small></label>
+            <input type="file" id="trans-file" accept="audio/*" onchange="onTranslatorFileSelect()">
+            <button class="btn btn-primary" id="trans-upload-btn" onclick="doTranslateUpload(event)"
+              style="margin-top:12px"><span class="btn-text">🌐 Translate Audio</span></button>
+          </div>
+          <div id="trans-status" class="status"></div>
+          <div id="trans-result" style="display:none;margin-top:20px">
+            <div class="card" style="margin-bottom:12px">
+              <div class="card-title">Original</div>
+              <div id="trans-original" class="result-text"></div>
+            </div>
+            <div class="card" style="margin-bottom:12px">
+              <div class="card-title">Translated</div>
+              <div id="trans-translated" class="result-text"></div>
+            </div>
+            <div id="trans-player" class="audio-player" style="display:none">
+              <audio id="trans-audio" controls></audio>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- BPM -->
-          <div class="form-group"><label>Tempo: <span id="bpm-val">120</span> BPM</label>
-            <input type="range" id="song-bpm" min="60" max="180" value="120" class="bpm-slider"
-              oninput="document.getElementById('bpm-val').textContent=this.value">
+      <!-- ═══ SONG GENERATOR TAB ═══ -->
+      <div class="tab-panel" id="tab-song">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎵 Song Generator</h1>
+          <p>Create songs with AI singing & instrumentals</p>
+        </div>
+        <div class="card">
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="song-mode-generate" onclick="setSongMode('generate')">🎶
+              Generate</button>
+            <button class="mode-btn" id="song-mode-custom" onclick="setSongMode('custom')">✍️ Custom Lyrics</button>
+            <button class="mode-btn" id="song-mode-instrumental" onclick="setSongMode('instrumental')">🎹
+              Instrumental</button>
           </div>
-
-          <!-- Auto-generate options -->
+          <!-- Genre Grid -->
+          <div class="card-title">🎸 Select Genre</div>
+          <div class="genre-grid" id="genre-grid">
+            <div class="genre-card active" data-genre="bollywood" onclick="selectGenre('bollywood')"><span
+                class="genre-emoji">🎬</span>Bollywood</div>
+            <div class="genre-card" data-genre="pop" onclick="selectGenre('pop')"><span class="genre-emoji">🎤</span>Pop
+            </div>
+            <div class="genre-card" data-genre="rock" onclick="selectGenre('rock')"><span
+                class="genre-emoji">🎸</span>Rock</div>
+            <div class="genre-card" data-genre="lofi" onclick="selectGenre('lofi')"><span
+                class="genre-emoji">🌙</span>Lo-Fi</div>
+            <div class="genre-card" data-genre="classical" onclick="selectGenre('classical')"><span
+                class="genre-emoji">🎻</span>Classical</div>
+            <div class="genre-card" data-genre="devotional" onclick="selectGenre('devotional')"><span
+                class="genre-emoji">🙏</span>Devotional</div>
+            <div class="genre-card" data-genre="hiphop" onclick="selectGenre('hiphop')"><span
+                class="genre-emoji">🔥</span>Hip-Hop</div>
+            <div class="genre-card" data-genre="romantic" onclick="selectGenre('romantic')"><span
+                class="genre-emoji">💕</span>Romantic</div>
+          </div>
+          <!-- Generate mode -->
           <div id="song-generate-mode">
             <div class="form-row">
-              <div class="form-group"><label>Theme</label><select id="song-theme">
-                  <option value="love">💕 Love</option>
-                  <option value="devotion">🙏 Devotion</option>
-                  <option value="nature">🌿 Nature</option>
-                  <option value="celebration">🎉 Celebration</option>
-                  <option value="home">🏠 Home</option>
-                </select></div>
-              <div class="form-group"><label>Language</label><select id="song-lang">{% for code, name in
-                  languages.items()
-                  %}<option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor
-                  %}</select></div>
+              <div class="form-group"><label>Theme</label>
+                <select id="song-theme">
+                  <option value="love">Love</option>
+                  <option value="party">Party</option>
+                  <option value="motivation">Motivation</option>
+                  <option value="nature">Nature</option>
+                  <option value="friendship">Friendship</option>
+                  <option value="heartbreak">Heartbreak</option>
+                  <option value="devotion">Devotion</option>
+                  <option value="celebration">Celebration</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Language</label>
+                <select id="song-lang">
+                  <option value="hi">Hindi</option>
+                  <option value="en">English</option>
+                  <option value="te">Telugu</option>
+                  <option value="ta">Tamil</option>
+                  <option value="kn">Kannada</option>
+                  <option value="bn">Bengali</option>
+                  <option value="mr">Marathi</option>
+                  <option value="pa">Punjabi</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group"><label>Style Description <small>(optional)</small></label><input type="text"
-                id="song-genre-desc" placeholder="e.g. A soulful Bollywood ballad with romantic vibes"></div>
+            <div class="form-group"><label>Genre Description (optional)</label><input type="text" id="song-genre-desc"
+                placeholder="E.g., upbeat dance number with tabla"></div>
           </div>
-
-          <!-- Custom lyrics -->
+          <!-- Custom mode -->
           <div id="song-custom-mode" style="display:none">
-            <div class="form-group"><label>Write Your Lyrics</label><textarea id="song-custom-lyrics" rows="8"
-                placeholder="Write your song lyrics here..."></textarea></div>
-            <div class="form-group"><label>Language</label><select id="song-custom-lang">{% for code, name in
-                languages.items() %}<option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}
-                </option>
-                {% endfor %}</select></div>
+            <div class="form-group"><label>Your Lyrics or Description</label><textarea id="song-custom-lyrics" rows="5"
+                placeholder="Paste lyrics or describe the song you want..."></textarea></div>
+            <div class="form-group"><label>Language</label>
+              <select id="song-custom-lang">
+                <option value="hi">Hindi</option>
+                <option value="en">English</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
+              </select>
+            </div>
           </div>
-
+          <!-- Shared controls -->
           <div class="form-row">
-            <div class="form-group"><label>Voice</label><select id="song-gender">
+            <div class="form-group"><label>Voice Gender</label>
+              <select id="song-gender">
                 <option value="female">Female</option>
                 <option value="male">Male</option>
-              </select></div>
+              </select>
+            </div>
+            <div class="form-group"><label>BPM: <span id="bpm-val">120</span></label>
+              <input type="range" id="song-bpm" min="60" max="180" value="120"
+                oninput="document.getElementById('bpm-val').textContent=this.value">
+            </div>
           </div>
-
-          <div class="checkbox-group" id="vocal-check-group"><input type="checkbox" id="song-audio-check" checked><label
-              for="song-audio-check">Generate vocal audio track</label></div>
-          <div id="instrumental-info" style="display:none" class="status" style="color:var(--accent-primary)">🎹
-            Instrumental-only mode: Pure music, no vocals.</div>
-
-          <div class="btn-group">
-            <button class="btn btn-primary btn-lg" onclick="doGenerateSong()" id="song-btn">
-              <span class="spinner"></span><span class="btn-text">✨ Create Lyrics</span>
-            </button>
-            <button class="btn btn-secondary btn-lg" onclick="translateCurrentLyrics()" id="translate-lyrics-btn"
-              style="display:none">
-              🌐 Translate Lyrics
-            </button>
+          <div class="card-title">🎹 Instruments</div>
+          <div class="instrument-toggles">
+            <label class="instrument-toggle"><input type="checkbox" id="inst-drums" checked> 🥁 Drums</label>
+            <label class="instrument-toggle"><input type="checkbox" id="inst-bass" checked> 🎸 Bass</label>
+            <label class="instrument-toggle"><input type="checkbox" id="inst-guitar"> 🎸 Guitar</label>
+            <label class="instrument-toggle"><input type="checkbox" id="inst-piano" checked> 🎹 Piano</label>
+            <label class="instrument-toggle"><input type="checkbox" id="inst-synth"> 🎛️ Synth</label>
           </div>
-
-          <div class="status" id="song-status"></div>
-
-          <!-- Spectrum visualizer -->
-          <div class="visualizer-container" id="viz-container" style="display:none">
-            <canvas id="spectrum-canvas" height="80"></canvas>
+          <div id="vocal-check-group">
+            <label class="instrument-toggle"><input type="checkbox" id="song-audio-check" checked> 🎤 Generate Vocal
+              Audio (AI Singing)</label>
           </div>
-
-          <div class="result-box" id="song-result">
-            <div class="result-label">🎶 Lyrics</div>
-            <div class="result-text lyrics" id="song-lyrics"></div>
-            <div class="result-label" style="margin-top:16px">🎼 Melody</div>
-            <div class="melody-viz" id="melody-viz"></div>
+          <div id="instrumental-info"
+            style="display:none;padding:12px;background:rgba(6,182,212,0.08);border-radius:8px;color:var(--accent-cyan);font-size:.85rem;margin-bottom:16px">
+            🎹 Instrumental-only mode — no vocals, just the backing track
           </div>
-
-          <div class="audio-player" id="song-player" style="display:none"><audio controls id="song-audio"></audio></div>
+          <button class="btn btn-primary btn-block" id="song-gen-btn" onclick="doGenerateSong(event)"><span
+              class="btn-text">🎵 Generate Song</span></button>
+          <div id="song-status" class="status"></div>
+          <div id="song-result" class="result-panel">
+            <div class="card-title">🎵 Generated Song</div>
+            <div id="melody-viz" class="melody-viz"></div>
+            <div id="viz-container" class="viz-container"><canvas id="spectrum-canvas" height="80"></canvas></div>
+            <div id="song-player" class="audio-player" style="display:none"><audio id="song-audio" controls></audio>
+            </div>
+            <div style="margin-top:16px">
+              <div class="card-title">📝 Lyrics</div>
+              <pre id="song-lyrics" class="result-text"></pre>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px">
+              <button class="btn btn-secondary" id="translate-lyrics-btn" onclick="translateCurrentLyrics()"
+                style="display:none"><span class="btn-text">🌐 Translate Lyrics</span></button>
+              <button class="btn btn-secondary" id="karaoke-lyrics-btn" onclick="startKaraokeFromSong()"
+                style="display:none"><span class="btn-text">🎤 Karaoke Mode</span></button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- TAB 4 — CLONE -->
+      <!-- ═══ VOICE CLONE TAB ═══ -->
       <div class="tab-panel" id="tab-clone">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
-        <!-- Clone Section -->
-        <div class="card">
-          <div class="card-title"><span class="icon">🎤</span> Voice Clone <span class="lang-tag">NoteGPT-style</span>
-          </div>
-          <p class="card-desc">Record your voice or upload a sample to create a voice profile. The AI matches the
-            closest
-            neural voice.</p>
-
-          <div class="mode-toggle">
-            <button class="mode-btn active" onclick="setCloneInputMode('upload')" id="clone-mode-upload">📁 Upload
-              File</button>
-            <button class="mode-btn" onclick="setCloneInputMode('record')" id="clone-mode-record">🎙️ Record
-              Voice</button>
-          </div>
-
-          <!-- Upload mode -->
-          <div id="clone-upload-mode">
-            <div class="form-group"><label>Voice Sample (any audio format)</label>
-              <div class="upload-zone"><input type="file" id="clone-file" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a"
-                  onchange="onCloneFileSelect()">
-                <div class="upload-label" id="clone-upload-label"><span style="font-size:2rem">🎤</span><br><strong>Tap
-                    to
-                    upload</strong> or drag &amp; drop<br><small>All audio formats supported</small></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Record mode -->
-          <div id="clone-record-mode" style="display:none">
-            <div class="recorder-container">
-              <canvas id="rec-waveform" class="rec-waveform" height="80"></canvas>
-              <div class="rec-timer" id="rec-timer">00:00</div>
-              <div class="rec-controls">
-                <button class="btn btn-record" id="rec-start-btn" onclick="toggleRecording()"><span
-                    id="rec-btn-icon">⏺️</span> <span id="rec-btn-text">Start Recording</span></button>
-              </div>
-              <div class="rec-preview" id="rec-preview" style="display:none">
-                <audio controls id="rec-audio-preview"></audio>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group"><label>Voice Profile Name</label><input type="text" id="clone-name" value="myvoice"
-              placeholder="e.g. myvoice"></div>
-          <div class="form-row">
-            <div class="form-group"><label>Language</label><select id="clone-lang">{% for code, name in
-                languages.items()
-                %}<option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor
-                %}</select></div>
-            <div class="form-group"><label>Gender</label><select id="clone-gender">
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-              </select></div>
-          </div>
-          <div class="checkbox-group"><input type="checkbox" id="clone-consent"><label for="clone-consent">I consent to
-              voice cloning of this sample (required)</label></div>
-          <button class="btn btn-primary" onclick="doCloneVoice()"><span class="spinner"></span><span
-              class="btn-text">🎤
-              Create Voice Profile</span></button>
-          <div class="status" id="clone-status"></div>
-          <div class="result-box" id="clone-profile-result">
-            <div class="result-label">Voice Profile</div>
-            <div class="result-text" id="clone-profile-info"></div>
-          </div>
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎤 Voice Clone</h1>
+          <p>Create a digital replica of any voice</p>
         </div>
-
-        <!-- Voice Age Styles -->
         <div class="card">
-          <div class="card-title"><span class="icon">🗣️</span> Voice Age Simulator</div>
-          <p class="card-desc">Type text and hear how it would sound when spoken by a toddler, teenager, adult, or
-            elderly
-            person.</p>
-          <div class="form-group"><label>Text to Speak</label><textarea id="age-text"
-              placeholder="Type something to hear in different age voices...">Hello, I am speaking in a different age style!</textarea>
-            <div class="checkbox-group"><input type="checkbox" id="age-auto-translate"><label for="age-auto-translate">✨
-                Auto-translate text to target language</label></div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="clone-mode-upload" onclick="setCloneInputMode('upload')">📁
+              Upload</button>
+            <button class="mode-btn" id="clone-mode-record" onclick="setCloneInputMode('record')">🎤 Record</button>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Age Style</label>
-              <div class="genre-grid" id="age-grid">
-                {% for p in age_presets %}
-                <div class="genre-card {{ 'active' if p.id=='adult' else '' }}" data-age="{{ p.id }}"
-                  onclick="selectAge('{{ p.id }}')">
-                  <span class="genre-emoji">{{ p.emoji }}</span>
-                  <span class="genre-name">{{ p.name }}</span>
-                  <span class="genre-bpm">{{ p.age_range }}</span>
-                </div>
-                {% endfor %}
-              </div>
+          <!-- Upload -->
+          <div id="clone-upload-mode">
+            <label class="upload-zone" id="clone-upload-label" for="clone-file">🎤 Upload a voice sample<br><small>WAV,
+                MP3, M4A — min 10 seconds</small></label>
+            <input type="file" id="clone-file" accept="audio/*" onchange="onCloneFileSelect()">
+          </div>
+          <!-- Record -->
+          <div id="clone-record-mode" style="display:none">
+            <div style="text-align:center;padding:20px">
+              <button class="btn btn-primary" id="rec-start-btn" onclick="toggleRecording()"
+                style="width:80px;height:80px;border-radius:50%;font-size:2rem;padding:0"><span
+                  id="rec-btn-icon">⏺️</span></button>
+              <p id="rec-btn-text" style="margin-top:8px;font-size:.85rem;color:var(--text-secondary)">Start Recording
+              </p>
+              <p id="rec-timer" style="font-family:monospace;font-size:1.2rem;margin-top:8px">00:00</p>
+              <canvas id="rec-waveform" height="60" style="width:100%;margin-top:12px;border-radius:8px"></canvas>
             </div>
+            <div id="rec-preview" style="display:none" class="audio-player"><audio id="rec-audio-preview"
+                controls></audio></div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Language</label><select id="age-lang">{% for code, name in languages.items()
-                %}
-                <option value="{{ code }}" {{ 'selected' if code=='hi' else '' }}>{{ name }}</option>{% endfor %}
+          <div class="form-row" style="margin-top:16px">
+            <div class="form-group"><label>Profile Name</label><input type="text" id="clone-name" value="myvoice"
+                placeholder="Name for this voice"></div>
+            <div class="form-group"><label>Language</label>
+              <select id="clone-lang">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+                <option value="kn">Kannada</option>
               </select>
             </div>
-            <div class="form-group"><label>Gender</label><select id="age-gender">
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-              </select></div>
           </div>
-          <button class="btn btn-primary" onclick="doSpeakAge()"><span class="spinner"></span><span class="btn-text">🗣️
-              Generate Age Voice</span></button>
-          <div class="status" id="age-status"></div>
-          <div class="audio-player" id="age-player" style="display:none"><audio controls id="age-audio"></audio></div>
-        </div>
-
-        <!-- Test Profile -->
-        <div class="card">
-          <div class="card-title"><span class="icon">🔊</span> Test Voice Profile</div>
-          <div class="form-group"><label>Profile Name</label><input type="text" id="test-profile-name" value="myvoice">
+          <div class="form-group"><label>Gender</label>
+            <select id="clone-gender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
           </div>
-          <div class="form-group"><label>Text to Speak</label><textarea id="test-profile-text"
-              placeholder="Type something...">Hello, this is my cloned voice speaking!</textarea></div>
-          <button class="btn btn-primary" onclick="doTestProfile()"><span class="spinner"></span><span
-              class="btn-text">🔊
-              Speak with Profile</span></button>
-          <div class="status" id="test-profile-status"></div>
-          <div class="audio-player" id="test-profile-player" style="display:none"><audio controls
-              id="test-profile-audio"></audio></div>
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:.85rem">
+            <input type="checkbox" id="clone-consent"> I consent to my voice being processed for cloning
+          </label>
+          <button class="btn btn-primary btn-block" id="clone-voice-btn" onclick="doCloneVoice(event)"><span
+              class="btn-text">🎤 Clone
+              Voice</span></button>
+          <div id="clone-status" class="status"></div>
+          <div id="clone-profile-result" class="result-panel">
+            <div class="card-title">✅ Voice Profile Created</div>
+            <pre id="clone-profile-info" class="result-text"></pre>
+            <div style="margin-top:16px">
+              <div class="card-title">🔊 Test Your Clone</div>
+              <div class="form-row">
+                <div class="form-group"><label>Profile</label><input type="text" id="test-profile-name" value="myvoice">
+                </div>
+                <div class="form-group"><label>Test Text</label><input type="text" id="test-profile-text"
+                    placeholder="Hello, this is my clone!" value="Hello, this is my cloned voice!"></div>
+              </div>
+              <button class="btn btn-secondary" id="test-profile-btn" onclick="doTestProfile(event)"><span
+                  class="btn-text">🔊 Test
+                  Voice</span></button>
+              <div id="test-profile-status" class="status"></div>
+              <div id="test-profile-player" class="audio-player" style="display:none"><audio id="test-profile-audio"
+                  controls></audio></div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Legendary Voices -->
+      <!-- ═══ LEGENDARY VOICES TAB ═══ -->
+      <div class="tab-panel" id="tab-legendary">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>👑 Legendary Voices</h1>
+          <p>Speak in iconic voice styles</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">⭐</span> Legendary Voices</div>
-          <p class="card-desc">Try built-in voice styles inspired by famous personalities. <em>These are styled presets,
-              not impersonations.</em></p>
           <div class="legendary-grid">
             {% for v in legendary_voices %}
-            <div class="legendary-card" data-vid="{{ v.id }}">
-              <div class="legendary-avatar">{{ v.avatar }}</div>
+            <div class="legendary-card" data-vid="{{v.id}}" onclick="selectLegendary('{{v.id}}')">
+              <div class="legendary-avatar">{{v.emoji}}</div>
               <div class="legendary-info">
-                <div class="legendary-name">{{ v.name }}</div>
-                <div class="legendary-desc">{{ v.description }}</div>
-                <span class="lang-tag">{{ v.category }}</span>
+                <div class="legendary-name">{{v.name}}</div>
+                <div class="legendary-desc">{{v.desc}}</div>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="selectLegendary('{{ v.id }}')">Try</button>
             </div>
             {% endfor %}
           </div>
-          <div id="legendary-panel" style="display:none; margin-top:20px;">
-            <div class="form-group"><label>Speaking as: <strong id="legend-name-display"></strong></label><textarea
-                id="legend-text" placeholder="Type text to speak with legendary voice..."></textarea>
-              <div class="checkbox-group"><input type="checkbox" id="legend-auto-translate"><label
-                  for="legend-auto-translate">✨ Auto-translate text to legend's language</label></div>
-            </div>
-            <button class="btn btn-primary" onclick="doSpeakLegendary()"><span class="spinner"></span><span
-                class="btn-text">⭐ Speak</span></button>
-            <div class="status" id="legend-status"></div>
-            <div class="audio-player" id="legend-player" style="display:none"><audio controls id="legend-audio"></audio>
+          <div id="legendary-panel" style="display:none">
+            <div class="card-title">Speaking as <span id="legend-name-display"></span></div>
+            <div class="form-group"><label>Enter Text</label><textarea id="legend-text" rows="3"
+                placeholder="What should this legend say?"></textarea></div>
+            <label
+              style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:.85rem"><input
+                type="checkbox" id="legend-auto-translate" checked> Auto-translate to voice language</label>
+            <button class="btn btn-primary" id="legendary-gen-btn" onclick="doSpeakLegendary(event)"><span
+                class="btn-text">👑 Generate
+                Voice</span></button>
+            <div id="legend-status" class="status"></div>
+            <div id="legend-player" class="audio-player" style="display:none"><audio id="legend-audio" controls></audio>
             </div>
           </div>
-        </div>
-
-        <!-- Consents -->
-        <div class="card">
-          <div class="card-title"><span class="icon">📋</span> Recorded Consents</div>
-          {% if consents %}
-          <div class="table-wrap">
-            <table>
-              <tr>
-                <th>Signer</th>
-                <th>Sample</th>
-                <th>Verified</th>
-              </tr>{% for c in consents %}<tr>
-                <td>{{ c.payload.signer }}</td>
-                <td>{{ c.payload.sample }}</td>
-                <td>{{ '✅' if c.verified else '❌' }}</td>
-              </tr>{% endfor %}
-            </table>
-          </div>
-          {% else %}
-          <p class="card-desc" style="margin:0;color:var(--text-muted)">No consent artifacts found yet.</p>
-          {% endif %}
         </div>
       </div>
 
-      <!-- TAB 6 — TRANSLATOR -->
-      <div class="tab-panel" id="tab-translator">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+      <!-- ═══ AI PODCAST TAB ═══ -->
+      <div class="tab-panel" id="tab-podcast">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎙️ AI Podcast Generator</h1>
+          <p>Create engaging dual-voice podcasts on any topic</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">🌐</span> Voice Translator</div>
-          <p class="card-desc">Speak or upload audio in ANY language. We'll transcribe it, translate it, and speak it
-            back
-            in your target language!</p>
-
+          <div class="form-group"><label>Podcast Topic</label><input type="text" id="podcast-topic"
+              placeholder="E.g., The future of AI in education"></div>
           <div class="form-row">
-            <div class="form-group">
-              <label>Input Source</label>
-              <div class="mode-toggle">
-                <button class="mode-btn active" onclick="setTranslatorMode('text')" id="trans-mode-text">📝
-                  Text</button>
-                <button class="mode-btn" onclick="setTranslatorMode('record')" id="trans-mode-record">🎤 Record</button>
-                <button class="mode-btn" onclick="setTranslatorMode('upload')" id="trans-mode-upload">📁 Upload</button>
-              </div>
+            <div class="form-group"><label>Language</label>
+              <select id="podcast-lang">
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="te">Telugu</option>
+                <option value="ta">Tamil</option>
+              </select>
             </div>
-            <div class="form-group">
-              <label>Target Language</label>
-              <select id="trans-tgt-lang">{% for code, name in languages.items() %}
-                <option value="{{ code }}" {{ 'selected' if code=='ta' else '' }}>{{ name }}</option>{% endfor %}
+            <div class="form-group"><label>Duration</label>
+              <select id="podcast-duration">
+                <option value="short">Short (~1 min)</option>
+                <option value="medium">Medium (~3 min)</option>
+                <option value="long">Long (~5 min)</option>
               </select>
             </div>
           </div>
-
-          <!-- Text UI -->
-          <div id="translator-text-ui" style="margin-bottom:20px">
-            <div class="form-group"><label>Enter text to translate & speak</label><textarea id="trans-text-input"
-                placeholder="e.g. Hello, how are you?">Hello, how are you? I am very happy to meet you today.</textarea>
-            </div>
-            <button class="btn btn-primary" onclick="doTranslateText()"><span class="spinner"></span><span
-                class="btn-text">🗣️ Translate & Speak</span></button>
+          <div class="podcast-speakers">
+            <div class="speaker-badge">🧑 Host (Male)</div>
+            <div class="speaker-badge">👩 Co-Host (Female)</div>
           </div>
-
-          <!-- Record UI -->
-          <div id="translator-record-ui"
-            style="display:none;text-align:center;padding:20px;background:var(--bg-secondary);border-radius:var(--radius);margin-bottom:20px">
-            <div class="waveform-viz" id="trans-viz" style="height:60px;margin-bottom:15px"></div>
-            <button class="record-btn" id="trans-record-btn" onclick="toggleTranslatorRecording()">
-              <div class="record-icon"></div>
-            </button>
-            <p id="trans-status-text" style="margin-top:10px;color:var(--text-muted)">Tap to start recording...</p>
-          </div>
-
-          <!-- Upload UI -->
-          <div id="translator-upload-ui" style="display:none;margin-bottom:20px">
-            <div class="upload-zone"><input type="file" id="trans-file" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a"
-                onchange="onTranslatorFileSelect()">
-              <div class="upload-label" id="trans-file-label">
-                <span style="font-size:2rem">📁</span><br><strong>Tap to upload</strong> audio<br><small>WAV, MP3, M4A,
-                  OGG</small>
-              </div>
-            </div>
-            <div class="form-group" style="margin-top:10px"><button class="btn btn-primary"
-                onclick="doTranslateUpload()">🚀 Translate File</button></div>
-          </div>
-
-          <!-- Results -->
-          <div id="trans-result" style="display:none;animation:fadeIn 0.5s">
-            <div class="form-group">
-              <label>You said (Transcribed):</label>
-              <div class="box-output" id="trans-original">...</div>
-            </div>
-            <div class="form-group">
-              <label>Translation:</label>
-              <div class="box-output" id="trans-translated"
-                style="color:var(--accent-2);font-weight:600;font-size:1.1rem">...</div>
-            </div>
-            <div class="audio-player" id="trans-player">
-              <audio controls id="trans-audio"></audio>
+          <button class="btn btn-primary btn-block" id="podcast-gen-btn" onclick="doGeneratePodcast(event)"><span
+              class="btn-text">🎙️ Generate Podcast</span></button>
+          <div id="podcast-status" class="status"></div>
+          <div id="podcast-result" class="result-panel">
+            <div class="card-title">🎙️ Your Podcast</div>
+            <div id="podcast-player" class="audio-player" style="display:none"><audio id="podcast-audio"
+                controls></audio></div>
+            <div style="margin-top:12px">
+              <div class="card-title">📝 Script</div>
+              <pre id="podcast-script" class="result-text"></pre>
             </div>
           </div>
-
-          <div class="status" id="trans-status"></div>
         </div>
       </div>
 
-      <!-- TAB 7 — STUDIO -->
-      <div class="tab-panel" id="tab-studio">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+      <!-- ═══ KARAOKE MODE TAB ═══ -->
+      <div class="tab-panel" id="tab-karaoke">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎤 Karaoke Mode</h1>
+          <p>Sing along with timed lyrics highlighting</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">🎚️</span> AI Audio Studio</div>
-          <p class="card-desc">Upload any audio file and apply AI-powered effects — change voice pitch, add echo, speed
-            up, enhance quality, and more!</p>
-
-          <div class="form-group"><label>Upload Audio File</label>
-            <div class="upload-zone"><input type="file" id="studio-file"
-                accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a,.aac,.wma,.webm,.amr,.opus" onchange="onStudioFileSelect()">
-              <div class="upload-label" id="studio-upload-label"><span style="font-size:2rem">🎧</span><br><strong>Tap
-                  to
-                  upload</strong> audio file<br><small>All audio formats supported — WAV, MP3, OGG, FLAC, M4A, AAC, WMA,
-                  WEBM & more</small></div>
-            </div>
+          <div class="form-group"><label>Paste Lyrics (one line per line)</label><textarea id="karaoke-lyrics-input"
+              rows="6"
+              placeholder="Paste song lyrics here...&#10;Each line will be highlighted in sequence during playback"></textarea>
           </div>
-
-          <div class="form-group"><label>Choose Effect</label>
-            <div class="genre-grid" id="effects-grid">
-              {% for fx in audio_effects %}
-              <div class="genre-card {{ 'active' if fx.id=='enhance' else '' }}" data-effect="{{ fx.id }}"
-                onclick="selectEffect('{{ fx.id }}')">
-                <span class="genre-emoji">{{ fx.emoji }}</span>
-                <span class="genre-name">{{ fx.name }}</span>
-              </div>
-              {% endfor %}
-            </div>
+          <div class="form-group"><label>Upload Backing Track (optional)</label>
+            <label class="upload-zone" for="karaoke-audio-file">🎵 Upload audio file</label>
+            <input type="file" id="karaoke-audio-file" accept="audio/*" style="display:none"
+              onchange="onKaraokeFileSelect()">
           </div>
-
-          <p id="effect-desc" class="card-desc" style="font-style:italic">✨ Boost audio levels and normalize volume</p>
-
-          <button class="btn btn-primary btn-lg" onclick="doEditAudio()"><span class="spinner"></span><span
-              class="btn-text">🎚️ Apply Effect</span></button>
-          <div class="status" id="studio-status"></div>
-
-          <div class="form-row" style="margin-top:16px;gap:16px">
-            <div style="flex:1">
-              <div class="result-label">🔊 Original</div>
-              <div class="audio-player" id="studio-original-player" style="display:none"><audio controls
-                  id="studio-original-audio"></audio></div>
-            </div>
-            <div style="flex:1">
-              <div class="result-label">✨ Processed</div>
-              <div class="audio-player" id="studio-processed-player" style="display:none"><audio controls
-                  id="studio-processed-audio"></audio></div>
+          <div class="form-group"><label>Seconds per Line</label><input type="number" id="karaoke-speed" value="4"
+              min="1" max="15" step="0.5"></div>
+          <button class="btn btn-primary btn-block" id="karaoke-start-btn" onclick="startKaraoke(event)"><span
+              class="btn-text">🎤 Start
+              Karaoke</span></button>
+          <div id="karaoke-status" class="status"></div>
+          <div id="karaoke-display-area" style="display:none;margin-top:20px">
+            <div id="karaoke-audio-player" class="audio-player" style="display:none"><audio id="karaoke-audio"
+                controls></audio></div>
+            <div class="karaoke-display" id="karaoke-display"></div>
+            <div style="text-align:center;margin-top:16px">
+              <button class="btn btn-secondary" onclick="stopKaraoke()"><span class="btn-text">⏹️ Stop</span></button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 7 — STORYTELLER AI -->
-      <div class="tab-panel" id="tab-story">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
-        <div class="card storyteller-card">
-          <div class="card-title"><span class="icon">📖</span> Storyteller AI</div>
-          <p class="card-desc">Generate magical bedtime stories. Enter a theme or character to begin.</p>
-          <div class="form-group">
-            <label>Story Theme / Keywords</label>
-            <input type="text" id="story-theme" placeholder="e.g. A brave cat in a candy forest">
+      <!-- ═══ RINGTONE CREATOR TAB ═══ -->
+      <div class="tab-panel" id="tab-ringtone">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>📱 Ringtone Creator</h1>
+          <p>Generate custom ringtones from genres</p>
+        </div>
+        <div class="card">
+          <div class="card-title">🎸 Select Style</div>
+          <div class="genre-grid" id="ringtone-genre-grid">
+            <div class="genre-card active" data-genre="bollywood" onclick="selectRingtoneGenre('bollywood')"><span
+                class="genre-emoji">🎬</span>Bollywood</div>
+            <div class="genre-card" data-genre="pop" onclick="selectRingtoneGenre('pop')"><span
+                class="genre-emoji">🎤</span>Pop</div>
+            <div class="genre-card" data-genre="classical" onclick="selectRingtoneGenre('classical')"><span
+                class="genre-emoji">🎻</span>Classical</div>
+            <div class="genre-card" data-genre="lofi" onclick="selectRingtoneGenre('lofi')"><span
+                class="genre-emoji">🌙</span>Lo-Fi</div>
+            <div class="genre-card" data-genre="rock" onclick="selectRingtoneGenre('rock')"><span
+                class="genre-emoji">🎸</span>Rock</div>
+            <div class="genre-card" data-genre="hiphop" onclick="selectRingtoneGenre('hiphop')"><span
+                class="genre-emoji">🔥</span>Hip-Hop</div>
           </div>
-          <div class="form-group">
-            <label>Narration Language</label>
+          <div class="form-row">
+            <div class="form-group"><label>Duration (seconds)</label><input type="number" id="ringtone-duration"
+                value="15" min="5" max="30"></div>
+            <div class="form-group"><label>BPM</label><input type="number" id="ringtone-bpm" value="120" min="60"
+                max="180"></div>
+          </div>
+          <button class="btn btn-primary btn-block" id="ringtone-gen-btn" onclick="doGenerateRingtone(event)"><span
+              class="btn-text">📱 Generate Ringtone</span></button>
+          <div id="ringtone-status" class="status"></div>
+          <div id="ringtone-result" class="result-panel">
+            <div class="card-title">📱 Your Ringtone</div>
+            <div id="ringtone-player" class="audio-player"><audio id="ringtone-audio" controls></audio></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AUDIO MASHUP TAB ═══ -->
+      <div class="tab-panel" id="tab-mashup">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎛️ Audio Mashup</h1>
+          <p>Mix and blend two audio tracks together</p>
+        </div>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Track A</label>
+              <label class="upload-zone" for="mashup-file-a">🎵 Upload Track A</label>
+              <input type="file" id="mashup-file-a" accept="audio/*" style="display:none"
+                onchange="onMashupFileSelect('a')">
+              <span id="mashup-file-a-name"
+                style="font-size:.8rem;color:var(--text-muted);margin-top:4px;display:block"></span>
+            </div>
+            <div class="form-group">
+              <label>Track B</label>
+              <label class="upload-zone" for="mashup-file-b">🎵 Upload Track B</label>
+              <input type="file" id="mashup-file-b" accept="audio/*" style="display:none"
+                onchange="onMashupFileSelect('b')">
+              <span id="mashup-file-b-name"
+                style="font-size:.8rem;color:var(--text-muted);margin-top:4px;display:block"></span>
+            </div>
+          </div>
+          <div class="form-group"><label>Mix Balance (A ← → B): <span id="mix-val">50</span>%</label>
+            <input type="range" id="mashup-mix" min="0" max="100" value="50"
+              oninput="document.getElementById('mix-val').textContent=this.value">
+          </div>
+          <button class="btn btn-primary btn-block" id="mashup-gen-btn" onclick="doMashup(event)"><span
+              class="btn-text">🎛️ Create Mashup</span></button>
+          <div id="mashup-status" class="status"></div>
+          <div id="mashup-result" class="result-panel">
+            <div class="card-title">🎛️ Your Mashup</div>
+            <div class="audio-player"><audio id="mashup-audio" controls></audio></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VOICE MOOD BOARD TAB ═══ -->
+      <div class="tab-panel" id="tab-mood">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🌈 Voice Mood Board</h1>
+          <p>Detect mood from text and find the perfect voice match</p>
+        </div>
+        <div class="card">
+          <div class="form-group"><label>Enter text to analyze mood</label><textarea id="mood-text" rows="4"
+              placeholder="Write something and we'll detect its emotional tone..."></textarea></div>
+          <button class="btn btn-primary btn-block" id="mood-gen-btn" onclick="doDetectMood(event)"><span
+              class="btn-text">🌈 Analyze Mood</span></button>
+          <div id="mood-status" class="status"></div>
+          <div id="mood-result" class="result-panel">
+            <div class="mood-display">
+              <div class="mood-emoji" id="mood-result-emoji">😊</div>
+              <div class="mood-label" id="mood-result-label">Happy</div>
+              <div id="mood-result-desc" style="color:var(--text-secondary);font-size:.9rem"></div>
+              <div class="mood-tags" id="mood-tags"></div>
+            </div>
+            <div style="margin-top:16px">
+              <div class="card-title">🔊 Hear it in the Matching Voice</div>
+              <button class="btn btn-secondary" id="mood-speak-btn" onclick="doSpeakMood(event)"><span
+                  class="btn-text">🔊 Speak with Mood
+                  Voice</span></button>
+              <div id="mood-player" class="audio-player" style="display:none"><audio id="mood-audio" controls></audio>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AUDIO STUDIO TAB ═══ -->
+      <div class="tab-panel" id="tab-studio">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>🎚️ Audio Studio</h1>
+          <p>Professional audio effects & editing</p>
+        </div>
+        <div class="card">
+          <label class="upload-zone" id="studio-upload-label" for="studio-file">🎧 Upload audio to edit<br><small>WAV,
+              MP3, M4A</small></label>
+          <input type="file" id="studio-file" accept="audio/*" style="display:none" onchange="onStudioFileSelect()">
+          <div id="studio-original-player" class="audio-player" style="display:none"><audio id="studio-original-audio"
+              controls></audio></div>
+          <div class="card-title" style="margin-top:20px">🎭 Select Effect</div>
+          <div class="genre-grid" id="effects-grid">
+            <div class="genre-card active" data-effect="enhance" onclick="selectEffect('enhance')"><span
+                class="genre-emoji">✨</span>Enhance</div>
+            <div class="genre-card" data-effect="pitch_up" onclick="selectEffect('pitch_up')"><span
+                class="genre-emoji">🐿️</span>Pitch Up</div>
+            <div class="genre-card" data-effect="pitch_down" onclick="selectEffect('pitch_down')"><span
+                class="genre-emoji">🗿</span>Pitch Down</div>
+            <div class="genre-card" data-effect="speed_up" onclick="selectEffect('speed_up')"><span
+                class="genre-emoji">⏩</span>Speed Up</div>
+            <div class="genre-card" data-effect="slow_down" onclick="selectEffect('slow_down')"><span
+                class="genre-emoji">🐌</span>Slow Down</div>
+            <div class="genre-card" data-effect="echo" onclick="selectEffect('echo')"><span
+                class="genre-emoji">🏔️</span>Echo</div>
+            <div class="genre-card" data-effect="reverse" onclick="selectEffect('reverse')"><span
+                class="genre-emoji">🔄</span>Reverse</div>
+            <div class="genre-card" data-effect="robot" onclick="selectEffect('robot')"><span
+                class="genre-emoji">🤖</span>Robot</div>
+          </div>
+          <p id="effect-desc" style="font-size:.85rem;color:var(--text-secondary);margin-bottom:16px">✨ Boost audio
+            levels and normalize volume</p>
+          <button class="btn btn-primary btn-block" id="studio-gen-btn" onclick="doEditAudio(event)"><span
+              class="btn-text">🎚️ Apply
+              Effect</span></button>
+          <div id="studio-status" class="status"></div>
+          <div id="studio-processed-player" class="audio-player" style="display:none"><audio id="studio-processed-audio"
+              controls></audio></div>
+        </div>
+      </div>
+
+      <!-- ═══ STORYTELLER AI TAB ═══ -->
+      <div class="tab-panel" id="tab-story">
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>📖 Storyteller AI</h1>
+          <p>Generate magical stories with narration</p>
+        </div>
+        <div class="card">
+          <div class="form-group"><label>Story Theme</label><input type="text" id="story-theme"
+              placeholder="E.g., A brave princess who saves her kingdom"></div>
+          <div class="form-group"><label>Language</label>
             <select id="story-lang">
               <option value="en">English</option>
               <option value="hi">Hindi</option>
+              <option value="te">Telugu</option>
               <option value="ta">Tamil</option>
-              <option value="bn">Bengali</option>
             </select>
           </div>
-          <div class="btn-group">
-            <button class="btn btn-primary btn-lg" onclick="doGenerateStory()" id="story-btn">
-              <span class="spinner"></span><span class="btn-text">✨ Tell me a Story</span>
-            </button>
-          </div>
-          <div class="status" id="story-status"></div>
-          <div id="story-result" style="display:none; margin-top: 24px;">
-            <div class="result-label">📜 The Story</div>
-            <div id="story-text" class="lyrics-box" style="white-space: pre-wrap; height: 300px;"></div>
-            <div class="audio-player" id="story-player" style="margin-top:20px">
-              <audio id="story-audio" controls></audio>
+          <button class="btn btn-primary btn-block" id="story-gen-btn" onclick="doGenerateStory(event)"><span
+              class="btn-text">📖 Generate Story</span></button>
+          <div id="story-status" class="status"></div>
+          <div id="story-result" style="display:none;margin-top:20px">
+            <div class="card-title">📖 Your Story</div>
+            <pre id="story-text" class="result-text"></pre>
+            <div id="story-player" class="audio-player" style="display:none"><audio id="story-audio" controls></audio>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 8 — VOICE SENTIMENT -->
+      <!-- ═══ SENTIMENT TAB ═══ -->
       <div class="tab-panel" id="tab-sentiment">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>💭 Sentiment Analysis</h1>
+          <p>Analyze emotional tone of any text</p>
+        </div>
         <div class="card">
-          <div class="card-title"><span class="icon">🌈</span> Voice Sentiment Analysis</div>
-          <p class="card-desc">Reveal the emotional depth of any text or voice snippet.</p>
-          <div class="form-group">
-            <label>Analyze Text</label>
-            <textarea id="sentiment-text" placeholder="Paste text here to analyze emotion..." rows="4"></textarea>
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-primary btn-lg" onclick="doAnalyzeSentiment()" id="sentiment-btn">
-              <span class="spinner"></span><span class="btn-text">🔍 Analyze Emotion</span>
-            </button>
-          </div>
-          <div class="status" id="sentiment-status"></div>
-          <div id="sentiment-result" style="display:none; margin-top: 24px; text-align: center;">
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-primary);" id="sentiment-label">Joyful
-            </div>
-            <div style="font-size: 0.9rem; color: var(--text-secondary);" id="sentiment-score">95% Confidence</div>
-            <div class="sentiment-bar-container"
-              style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; margin-top: 12px; overflow: hidden;">
-              <div id="sentiment-bar"
-                style="height: 100%; width: 0%; background: var(--accent-gradient); transition: width 1s;"></div>
+          <div class="form-group"><label>Enter Text</label><textarea id="sentiment-text" rows="4"
+              placeholder="Write or paste text to analyze its emotional tone..."></textarea></div>
+          <button class="btn btn-primary btn-block" id="sentiment-btn" onclick="doAnalyzeSentiment(event)"><span
+              class="btn-text">💭 Analyze Sentiment</span></button>
+          <div id="sentiment-status" class="status"></div>
+          <div id="sentiment-result" style="display:none;margin-top:20px">
+            <div class="mood-display">
+              <div class="mood-emoji" id="sentiment-emoji">🤔</div>
+              <div class="mood-label" id="sentiment-label"></div>
+              <div id="sentiment-score" style="color:var(--text-secondary)"></div>
+              <div class="sentiment-bar-track" style="width:200px;margin:12px auto">
+                <div class="sentiment-bar-fill" id="sentiment-bar" style="width:0%"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 9 — LIBRARY (History) -->
+      <!-- ═══ LIBRARY TAB ═══ -->
       <div class="tab-panel" id="tab-library">
-        <div class="back-to-dashboard" onclick="exitToDashboard()">➔ Back to Dashboard</div>
-        <div class="card">
-          <div class="card-title">
-            <span class="icon">📚</span> My Creative Library
-            <button class="btn btn-secondary btn-sm" onclick="loadHistory()" style="margin-left: auto;">🔄
-              Refresh</button>
+        <button class="back-to-dashboard" onclick="showDashboard()">← Back to Dashboard</button>
+        <div class="page-header">
+          <h1>📚 My Library</h1>
+          <p>Your creation history</p>
+        </div>
+        <div class="card" id="library-content">
+          <div class="form-group"><input type="text" placeholder="🔍 Search your creations..."
+              oninput="filterHistory(this.value)"></div>
+          <div id="history-empty" style="text-align:center;padding:40px;color:var(--text-muted)">
+            <div style="font-size:3rem;margin-bottom:12px">📂</div>
+            <p>No creations yet. Start creating to build your library!</p>
           </div>
-          <p class="card-desc">Your creation history is securely stored. Replay or download your previous works.</p>
-
-          <div id="library-content" style="display:none">
-            <div class="form-group">
-              <input type="text" id="history-search" placeholder="Search history..." oninput="filterHistory(this.value)"
-                style="border-radius: 40px; padding: 10px 20px;">
-            </div>
-            <div id="history-list"></div>
-            <p id="history-empty" style="display:none; color:var(--text-muted); text-align: center; padding: 40px;">
-              No creations saved yet. Start generating and they'll appear here!
-            </p>
-          </div>
+          <div id="history-list"></div>
         </div>
       </div>
 
-    </div>
+      <!-- ── Footer ── -->
+      <div class="footer">Vaaniverse AI — Voice & Song Intelligence Platform &copy; 2025</div>
 
-    <!-- Login / Signup Modal -->
-    <div class="modal-overlay" id="login-modal" style="display:none" onclick="if(event.target===this)closeLoginModal()">
-      <div class="card" style="max-width:420px;margin:auto;position:relative">
-        <button class="btn btn-secondary btn-sm" onclick="closeLoginModal()"
-          style="position:absolute;top:12px;right:12px">✕</button>
-        <div class="card-title"><span class="icon">🔐</span> <span id="auth-title">Login</span></div>
-        <div class="mode-toggle" style="margin-bottom:16px">
-          <button class="mode-btn active" id="auth-login-btn" onclick="setAuthMode('login')">Login</button>
-          <button class="mode-btn" id="auth-signup-btn" onclick="setAuthMode('signup')">Sign Up</button>
-        </div>
-        <div class="form-group"><label>Username</label><input type="text" id="auth-username"
-            placeholder="Enter username">
-        </div>
-        <div class="form-group" id="auth-email-group" style="display:none"><label>Email
-            <small>(optional)</small></label><input type="email" id="auth-email" placeholder="you@example.com"></div>
-        <div class="form-group"><label>Password</label><input type="password" id="auth-password"
-            placeholder="Enter password"></div>
-        <button class="btn btn-primary" onclick="doAuth()" id="auth-submit-btn"><span class="spinner"></span><span
-            class="btn-text">🔐 Login</span></button>
-        <div class="status" id="auth-status"></div>
+    </main>
+  </div>
+
+  <!-- Login Modal (for re-login) -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="card">
+      <div class="card-title">🔐 <span id="auth-title">Login</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-secondary btn-sm active" id="auth-login-btn"
+          onclick="setAuthMode('login')">Login</button>
+        <button class="btn btn-secondary btn-sm" id="auth-signup-btn" onclick="setAuthMode('signup')">Sign Up</button>
       </div>
+      <div class="form-group"><label>Username</label><input type="text" id="auth-username"></div>
+      <div class="form-group" id="auth-email-group" style="display:none"><label>Email</label><input type="email"
+          id="auth-email"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="auth-password"></div>
+      <div id="auth-status" class="status"></div>
+      <button class="btn btn-primary btn-block" id="auth-submit-btn" onclick="doAuth()"><span class="btn-text">🔐
+          Login</span></button>
+      <button class="btn btn-secondary btn-block" onclick="closeLoginModal()" style="margin-top:8px">Cancel</button>
     </div>
+  </div>
 
-    <div class="footer">
-      <p>Vaaniverse AI — Multilingual Voice Intelligence for India 🇮🇳</p>
-      <p style="margin-top:4px">⚠️ Legendary voices are styled presets, NOT impersonations. Do NOT use for
-        misinformation.
-      </p>
-    </div>
-
-    <script src="/static/app.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 
 </html>

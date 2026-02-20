@@ -22,11 +22,44 @@ from vaaniverse import voice_models, config, edge_tts_engine, voice_translator
 from vaaniverse import consent as consent_mod
 from vaaniverse import job_queue
 from vaaniverse import voice_styles, audio_editor, auth, database as db
+from vaaniverse import ai_service
 import tempfile
 
 app = FastAPI(title="Vaaniverse AI")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app.mount('/static', StaticFiles(directory=str(Path(__file__).parent / 'static')), name='static')
+
+# ── Server-Side Auth Middleware ─────────────────────────────────────────────
+PUBLIC_PATHS = {'/', '/login', '/register', '/me', '/docs', '/openapi.json'}
+PUBLIC_PREFIXES = ('/static/',)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse as StarletteJSON
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        # Allow public paths
+        if path in PUBLIC_PATHS or any(path.startswith(p) for p in PUBLIC_PREFIXES):
+            return await call_next(request)
+        # Check auth token
+        token = None
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+        if not token:
+            # Check query param fallback
+            token = request.query_params.get('token', '')
+        if not token:
+            return StarletteJSON({'ok': False, 'error': 'Authentication required'}, status_code=401)
+        user = auth.get_current_user(token)
+        if not user:
+            return StarletteJSON({'ok': False, 'error': 'Invalid or expired token'}, status_code=401)
+        # Attach user to request state
+        request.state.user = user
+        return await call_next(request)
+
+app.add_middleware(AuthMiddleware)
 
 
 # ── Pages ───────────────────────────────────────────────────────────────────
@@ -78,14 +111,14 @@ def _save_history(request: Request, entry_type: str, title: str, data: Dict = No
 
 @app.post('/translate')
 def web_translate(request: Request, text: str = Form(...), src: str = Form('auto'), tgt: str = Form('hi')):
-    out = translation.translate(text, src=src, tgt=tgt)
+    out = ai_service.translate(text, src=src, tgt=tgt)
     _save_history(request, 'translate', text[:30], {'original': text, 'translated': out, 'src': src, 'tgt': tgt})
     return JSONResponse({'original': text, 'translated': out, 'src': src, 'tgt': tgt})
 
 
 @app.post('/batch-translate')
 def web_batch_translate(text: str = Form(...)):
-    results = translation.batch_translate(text)
+    results = ai_service.batch_translate(text)
     return JSONResponse({'original': text, 'translations': results})
 
 
@@ -94,6 +127,7 @@ import tempfile
 # ── Text-to-Speech ──────────────────────────────────────────────────────────
 
 @app.post('/speak')
+@app.post('/tts')
 async def web_speak(request: Request, text: str = Form(...), lang: str = Form('hi'), gender: str = Form('female'), backend: str = Form('edge')):
     out_path = os.path.join(tempfile.gettempdir(), f"spoken_{lang}_{os.getpid()}.mp3")
     try:
@@ -251,48 +285,80 @@ async def web_generate_song(
     }, song.get('audio_path', ''))
 
     return JSONResponse({
+        'ok': True,
         'lyrics': song['lyrics'],
         'melody': song['melody'],
         'theme': song.get('theme', theme),
         'lang': song.get('lang', lang),
-        'audio_path': f"/song-audio?lang={song.get('lang', lang)}",
+        'audio_path': f"/song-audio?lang={song.get('lang', lang)}&t={os.getpid()}",
         'has_audio': song.get('audio_path') is not None,
         'instrumental_config': song.get('instrumental_config', {}),
         'instrumental_only': song.get('instrumental_only', False),
     })
 
 
+@app.post('/sing-lyrics')
+async def web_sing_lyrics(
+    request: Request,
+    lyrics: str = Form(...),
+    lang: str = Form('hi'),
+    gender: str = Form('female'),
+    genre: str = Form('bollywood'),
+    bpm: int = Form(0),
+):
+    """Re-sing existing lyrics with instrumental backing."""
+    try:
+        song = await song_generator.generate_song_audio_async(
+            custom_lyrics=lyrics,
+            lang=lang,
+            gender=gender,
+            genre=genre,
+            bpm=bpm,
+            full_length=True
+        )
+        
+        _save_history(request, 'sing_lyrics', 'Re-sing Lyrics', {'lang': lang}, song.get('audio_path', ''))
+        
+        return JSONResponse({
+            'ok': True,
+            'audio_path': f"/song-audio?lang={lang}&t={os.getpid()}",
+            'has_audio': song.get('audio_path') is not None
+        })
+    except Exception as e:
+        return JSONResponse({'ok': False, 'error': str(e)}, status_code=400)
+
+
 @app.post('/generate-story')
 async def web_generate_story(request: Request, theme: str = Form(...), lang: str = Form(...)):
     """Generate a bedtime story with AI narration."""
-    user = auth.get_current_user(request.cookies.get('vaaniverse_token', ''))
+    user = getattr(request.state, 'user', None)
     if not user:
         return JSONResponse({'error': 'Login required'}, status_code=401)
-    
-    # Simple story generator simulation
-    story_text = f"Once upon a time in a world of {theme}, there was a magical creature..."
-    if lang != 'en':
-        story_text = f"[Translated to {lang}] " + story_text
-    
-    _save_history(request, 'story', f"Story about {theme}", {'text': story_text})
-    
+
+    story_text = ai_service.generate_story(theme=theme, lang=lang)
+
+    _save_history(request, 'story', f"Story about {theme}", {'text': story_text[:200]})
+
     return JSONResponse({'ok': True, 'text': story_text})
 
 
 @app.post('/analyze-sentiment')
 async def web_analyze_sentiment(request: Request, text: str = Form(...)):
     """Analyze emotional tone of text."""
-    user = auth.get_current_user(request.cookies.get('vaaniverse_token', ''))
+    user = getattr(request.state, 'user', None)
     if not user:
         return JSONResponse({'error': 'Login required'}, status_code=401)
-    
-    sentiments = ['Joyful', 'Calm', 'Enthusiastic', 'Determined']
-    import random
-    result = random.choice(sentiments)
-    
-    _save_history(request, 'sentiment', f"Analysis: {text[:20]}...", {'sentiment': result})
-    
-    return JSONResponse({'ok': True, 'sentiment': result, 'score': 0.95})
+
+    result = ai_service.analyze_sentiment(text)
+
+    _save_history(request, 'sentiment', f"Analysis: {text[:20]}...", {'sentiment': result.get('sentiment', 'Neutral')})
+
+    return JSONResponse({
+        'ok': True,
+        'sentiment': result.get('sentiment', 'Neutral'),
+        'score': result.get('score', 0.5),
+        'explanation': result.get('explanation', ''),
+    })
 
 
 @app.get('/song-audio')
@@ -560,6 +626,216 @@ async def web_edit_audio(
         return JSONResponse({'error': str(e)}, status_code=400)
 
 
+# ── New Features ─────────────────────────────────────────────────────────
+
+@app.post('/generate-podcast')
+async def web_generate_podcast(
+    request: Request,
+    topic: str = Form(...),
+    lang: str = Form('en'),
+    duration: str = Form('short'),
+):
+    """Generate a dual-voice AI podcast on any topic."""
+    import asyncio
+    try:
+        # Generate script
+        turn_counts = {'short': 4, 'medium': 8, 'long': 14}
+        num_turns = turn_counts.get(duration, 4)
+        script_lines = []
+        host_topics = [
+            f"Let's dive into {topic}. What makes this so fascinating?",
+            f"That's a great point about {topic}. But what about the challenges?",
+            f"How do you think {topic} will evolve in the future?",
+            f"What should our listeners take away from this discussion on {topic}?",
+        ]
+        cohost_topics = [
+            f"Absolutely! {topic} is revolutionizing how we think about things.",
+            f"The challenges are real, but the opportunities are incredible.",
+            f"I think we'll see massive changes in the next few years.",
+            f"The key takeaway is to stay curious and keep exploring!",
+        ]
+        for i in range(num_turns):
+            if i % 2 == 0:
+                line = host_topics[i % len(host_topics)] if i < len(host_topics) else f"Interesting perspective on {topic}. Tell us more."
+                script_lines.append(f"HOST: {line}")
+            else:
+                line = cohost_topics[i % len(cohost_topics)] if i < len(cohost_topics) else f"Great question about {topic}. Let me explain."
+                script_lines.append(f"CO-HOST: {line}")
+        script = '\n'.join(script_lines)
+
+        # Generate audio for each line using edge-tts
+        tmp_dir = Path(tempfile.gettempdir()) / 'vaaniverse_podcast'
+        tmp_dir.mkdir(exist_ok=True)
+        import edge_tts
+        segments = []
+        voice_map = {
+            'en': ('en-US-GuyNeural', 'en-US-JennyNeural'),
+            'hi': ('hi-IN-MadhurNeural', 'hi-IN-SwaraNeural'),
+            'te': ('te-IN-MohanNeural', 'te-IN-ShrutiNeural'),
+            'ta': ('ta-IN-ValluvarNeural', 'ta-IN-PallaviNeural'),
+        }
+        male_voice, female_voice = voice_map.get(lang, voice_map['en'])
+
+        for idx, line in enumerate(script_lines):
+            is_host = line.startswith('HOST:')
+            text = line.split(':', 1)[1].strip()
+            voice = male_voice if is_host else female_voice
+            seg_path = str(tmp_dir / f'seg_{idx}.mp3')
+            communicate = edge_tts.Communicate(text, voice)
+            await communicate.save(seg_path)
+            segments.append(seg_path)
+
+        # Merge segments with pydub
+        from pydub import AudioSegment
+        combined = AudioSegment.empty()
+        pause = AudioSegment.silent(duration=500)
+        for seg_path in segments:
+            try:
+                seg = AudioSegment.from_file(seg_path)
+                combined += seg + pause
+            except Exception:
+                pass
+
+        out_path = str(tmp_dir / 'podcast_output.mp3')
+        combined.export(out_path, format='mp3')
+        _save_history(request, 'podcast', topic, {'lang': lang}, out_path)
+        return JSONResponse({'ok': True, 'script': script, 'audio_path': f'/podcast-audio'})
+    except Exception as e:
+        return JSONResponse({'ok': False, 'error': str(e)}, status_code=400)
+
+@app.get('/podcast-audio')
+def serve_podcast_audio():
+    path = Path(tempfile.gettempdir()) / 'vaaniverse_podcast' / 'podcast_output.mp3'
+    if path.exists():
+        return FileResponse(str(path), media_type='audio/mpeg')
+    return JSONResponse({'error': 'No podcast audio'}, status_code=404)
+
+
+@app.post('/generate-ringtone')
+async def web_generate_ringtone(
+    request: Request,
+    genre: str = Form('bollywood'),
+    duration: str = Form('15'),
+    bpm: str = Form('120'),
+):
+    """Generate a short ringtone using the song engine."""
+    try:
+        import edge_tts
+        from pydub import AudioSegment
+        from pydub.generators import Sine
+
+        dur_sec = min(int(duration), 30)
+        bpm_val = int(bpm)
+        beat_dur_ms = int(60000 / bpm_val)
+
+        # Create a simple melodic ringtone
+        genre_notes = {
+            'bollywood': [523, 587, 659, 698, 784, 698, 659, 587],
+            'pop': [440, 494, 523, 587, 659, 587, 523, 494],
+            'classical': [262, 294, 330, 349, 392, 440, 494, 523],
+            'lofi': [330, 392, 440, 494, 523, 494, 440, 392],
+            'rock': [440, 523, 587, 659, 784, 880, 784, 659],
+            'hiphop': [262, 330, 392, 523, 392, 330, 262, 330],
+        }
+        notes = genre_notes.get(genre, genre_notes['pop'])
+        ringtone = AudioSegment.empty()
+        total_beats = int(dur_sec * 1000 / beat_dur_ms)
+
+        for i in range(total_beats):
+            freq = notes[i % len(notes)]
+            tone = Sine(freq).to_audio_segment(duration=beat_dur_ms - 50)
+            tone = tone.fade_in(20).fade_out(30) - 6  # softer
+            ringtone += tone + AudioSegment.silent(duration=50)
+
+        # Trim to exact duration
+        ringtone = ringtone[:dur_sec * 1000]
+
+        tmp_dir = Path(tempfile.gettempdir()) / 'vaaniverse_ringtone'
+        tmp_dir.mkdir(exist_ok=True)
+        out = str(tmp_dir / 'ringtone.mp3')
+        ringtone.export(out, format='mp3')
+        _save_history(request, 'ringtone', f'{genre} ringtone', {'genre': genre, 'bpm': bpm}, out)
+        return JSONResponse({'ok': True, 'audio_path': f'/ringtone-audio'})
+    except Exception as e:
+        return JSONResponse({'ok': False, 'error': str(e)}, status_code=400)
+
+@app.get('/ringtone-audio')
+def serve_ringtone_audio():
+    path = Path(tempfile.gettempdir()) / 'vaaniverse_ringtone' / 'ringtone.mp3'
+    if path.exists():
+        return FileResponse(str(path), media_type='audio/mpeg')
+    return JSONResponse({'error': 'No ringtone'}, status_code=404)
+
+
+@app.post('/mashup')
+async def web_mashup(
+    request: Request,
+    file_a: UploadFile = File(...),
+    file_b: UploadFile = File(...),
+    mix: str = Form('50'),
+):
+    """Mix two audio files together."""
+    try:
+        from pydub import AudioSegment
+        tmp_dir = Path(tempfile.gettempdir()) / 'vaaniverse_mashup'
+        tmp_dir.mkdir(exist_ok=True)
+        path_a = tmp_dir / file_a.filename
+        path_b = tmp_dir / file_b.filename
+        with open(path_a, 'wb') as f:
+            shutil.copyfileobj(file_a.file, f)
+        with open(path_b, 'wb') as f:
+            shutil.copyfileobj(file_b.file, f)
+
+        a = AudioSegment.from_file(str(path_a))
+        b = AudioSegment.from_file(str(path_b))
+
+        mix_val = int(mix) / 100.0
+        # Adjust volumes based on mix balance
+        a = a - (mix_val * 12)  # reduce A as mix goes toward B
+        b = b - ((1 - mix_val) * 12)  # reduce B as mix goes toward A
+
+        # Make same length (use shorter)
+        min_len = min(len(a), len(b))
+        a = a[:min_len]
+        b = b[:min_len]
+
+        mixed = a.overlay(b)
+        out = str(tmp_dir / 'mashup_output.wav')
+        mixed.export(out, format='wav')
+        _save_history(request, 'mashup', 'Audio Mashup', {'mix': mix}, out)
+        return JSONResponse({'ok': True, 'audio_path': '/mashup-audio'})
+    except Exception as e:
+        return JSONResponse({'ok': False, 'error': str(e)}, status_code=400)
+
+
+@app.get('/mashup-audio')
+def serve_mashup_audio():
+    path = Path(tempfile.gettempdir()) / 'vaaniverse_mashup' / 'mashup_output.wav'
+    if path.exists():
+        return FileResponse(str(path), media_type='audio/wav')
+    return JSONResponse({'error': 'No mashup audio'}, status_code=404)
+
+
+
+
+@app.post('/detect-mood')
+def web_detect_mood(
+    request: Request,
+    text: str = Form(...),
+):
+    """Detect mood/emotion from text using AI."""
+    result = ai_service.detect_mood(text)
+
+    return JSONResponse({
+        'ok': True,
+        'mood': result.get('mood', 'Neutral'),
+        'emoji': result.get('emoji', '😐'),
+        'description': result.get('description', 'Detected emotional state'),
+        'tags': result.get('tags', ['neutral']),
+        'score': result.get('score', 0.5),
+    })
+
+
 # ── Auth & History ─────────────────────────────────────────────────────────
 
 @app.post('/register')
@@ -586,10 +862,7 @@ def web_login(
 @app.get('/me')
 def web_me(request: Request):
     """Get current user info from token."""
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if not token:
-        token = request.cookies.get('vaaniverse_token', '')
-    user = auth.get_current_user(token)
+    user = getattr(request.state, 'user', None)
     if user:
         return JSONResponse({'ok': True, 'user': user})
     return JSONResponse({'ok': False, 'error': 'Not logged in'}, status_code=401)
@@ -603,10 +876,7 @@ def web_save_history(
     data: str = Form('{}'),
 ):
     """Save a creation to user history."""
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if not token:
-        token = request.cookies.get('vaaniverse_token', '')
-    user = auth.get_current_user(token)
+    user = getattr(request.state, 'user', None)
     if not user:
         return JSONResponse({'ok': False, 'error': 'Login required'}, status_code=401)
     try:
@@ -620,10 +890,7 @@ def web_save_history(
 @app.get('/history')
 def web_history(request: Request):
     """Get user's creation history."""
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if not token:
-        token = request.cookies.get('vaaniverse_token', '')
-    user = auth.get_current_user(token)
+    user = getattr(request.state, 'user', None)
     if not user:
         return JSONResponse({'ok': False, 'error': 'Login required'}, status_code=401)
     items = db.get_history(user['id'])
@@ -633,10 +900,7 @@ def web_history(request: Request):
 @app.get('/history-audio/{hid}')
 def web_history_audio(request: Request, hid: int):
     """Serve audio from a history entry."""
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if not token:
-        token = request.cookies.get('vaaniverse_token', '')
-    user = auth.get_current_user(token)
+    user = getattr(request.state, 'user', None)
     if not user:
         return JSONResponse({'error': 'Unauthorized'}, status_code=401)
     

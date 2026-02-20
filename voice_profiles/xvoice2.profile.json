@@ -1,11 +1,11 @@
 {
   "name": "xvoice2",
   "sample_file": "voice_profiles\\xvoice2_sample.wav",
-  "original_sample": "C:\\Users\\student\\AppData\\Local\\Temp\\pytest-of-student\\pytest-22\\test_voice_clone_consent0\\sample.wav",
+  "original_sample": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\pytest-of-Lenovo\\pytest-0\\test_voice_clone_consent0\\sample.wav",
   "edge_voice": "hi-IN-SwaraNeural",
   "language": "hi",
   "gender": "female",
-  "created_at": "2026-02-19T05:01:35.436229+00:00",
+  "created_at": "2026-02-20T15:21:54.815604+00:00",
   "consent_given": true,
   "voice_analysis": {
     "estimated_gender": null,

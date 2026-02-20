@@ -4,3 +4,8 @@ venv/
 *.pkl
 *.wav
 *.mp3
+*.db
+.env
+voice_profiles/
+ffmpeg.exe
+ffprobe.exe
