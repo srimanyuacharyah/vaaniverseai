@@ -18,8 +18,9 @@ COPY data ./data
 # Set environment
 ENV PYTHONPATH=/app/src
 ENV VAANIVERSE_DB=/tmp/vaaniverse.db
+ENV VAANIVERSE_DATA_DIR=/tmp/data
 
 EXPOSE 8000
 
-# Use PORT env var from Render (defaults to 8000)
-CMD ["sh", "-c", "python -m uvicorn vaaniverse.web:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Ensure data directory exists and use PORT env var from Render (defaults to 8000)
+CMD ["sh", "-c", "mkdir -p /tmp/data && python -m uvicorn vaaniverse.web:app --host 0.0.0.0 --port ${PORT:-8000}"]

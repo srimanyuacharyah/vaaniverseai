@@ -30,7 +30,7 @@ class ConsentError(Exception):
 
 
 # Where voice profiles are stored
-_PROFILES_DIR = Path(os.environ.get('VAANIVERSE_DATA', '.')) / 'voice_profiles'
+_PROFILES_DIR = Path(os.environ.get('VAANIVERSE_DATA_DIR', '.')) / 'voice_profiles'
 
 
 def _profiles_dir() -> Path:
