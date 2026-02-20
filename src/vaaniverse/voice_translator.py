@@ -12,6 +12,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Dict, Optional
+import shutil
 
 from . import translation, edge_tts_engine
 
@@ -48,19 +49,26 @@ def transcribe_audio(audio_path: str, lang: str = 'auto') -> str:
             import pydub
             from pydub import AudioSegment
 
-            # Check for ffmpeg in common locations and add to PATH
+            # Check for ffmpeg in common locations
             search_paths = [
                 os.getcwd(),
-                os.path.dirname(os.getcwd()),
+                os.path.dirname(os.getcwd()),  # Check parent directory (e.g. if running from src)
                 os.path.join(os.getcwd(), "bin"),
                 "C:\\ffmpeg\\bin",
+                os.environ.get("FFMPEG_PATH", ""), # Allow manual override
             ]
+            
+            # Also check PATH via shutil.which
+            ffmpeg_path = shutil.which("ffmpeg")
+            if ffmpeg_path:
+                 search_paths.insert(0, os.path.dirname(ffmpeg_path))
 
             ffmpeg_found = False
             for path_dir in search_paths:
+                if not path_dir: continue
                 ffmpeg_exe = os.path.join(path_dir, "ffmpeg.exe")
                 if os.path.exists(ffmpeg_exe):
-                    # Add to PATH so pydub can find ffprobe too
+                    # Add to PATH so pydub can find ffprobe too data-dependently if needed
                     if path_dir not in os.environ["PATH"]:
                         os.environ["PATH"] += os.pathsep + path_dir
 
@@ -68,10 +76,16 @@ def transcribe_audio(audio_path: str, lang: str = 'auto') -> str:
                     AudioSegment.converter = ffmpeg_exe
                     ffmpeg_found = True
                     break
-
+            
+            # If not found in specific paths, trust pydub/system PATH but verify
             if not ffmpeg_found:
                 if shutil.which("ffmpeg"):
                     ffmpeg_found = True
+                    # Let pydub find it naturally or set it if we found the path via which
+                    AudioSegment.converter = shutil.which("ffmpeg")
+            
+            if not ffmpeg_found:
+                 raise RuntimeError("ffmpeg not found. Please install ffmpeg and add it to PATH or C:\\ffmpeg\\bin")
 
             audio = AudioSegment.from_file(str(path))
             audio.export(wav_path, format='wav')

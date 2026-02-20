@@ -140,7 +140,12 @@ async def web_voice_translate_audio(
             'transcribed': result.get('transcribed', ''),
             'translated': result.get('translated', ''),
         }, status_code=500)
+    except ValueError as e:
+        # User error: bad audio, unrecognizable speech
+        return JSONResponse({'error': str(e)}, status_code=400)
     except Exception as e:
+        # Server error: ffmpeg missing, other crashes
+        print(f"Error in voice-translate-audio: {e}") # Log it
         return JSONResponse({'error': str(e)}, status_code=500)
 
 
