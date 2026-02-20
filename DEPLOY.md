@@ -5,6 +5,14 @@ for better voice cloning or singing synthesis.
 
 Local quick start (Windows):
 
+**Prerequisites:**
+1.  **Python 3.8+** installed.
+2.  **FFmpeg** installed and added to system PATH (Required for audio processing).
+    -   Download from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip).
+    -   Extract the zip.
+    -   Add the `bin` folder to your System PATH environment variable.
+
+
 ```powershell
 python -m pip install -r requirements.txt
 .\start_web.bat
@@ -79,3 +87,24 @@ Legal / safety notes
   recorded, legal consent. This repo purposefully restricts cloning to
   consent-based personal samples and provides placeholder behavior for
   public-figure names.
+
+Exposing to Internet (Ngrok)
+----------------------------
+To share your local instance with others or test on mobile devices:
+
+1.  **Start the Local Server**:
+    Run `start_web.bat` as usual. It listens on `http://127.0.0.1:8000`.
+
+2.  **Start Ngrok**:
+    Download [ngrok](https://ngrok.com/download) if you haven't already.
+    Open a new terminal window and run:
+    ```bash
+    ngrok http 8000
+    ```
+
+3.  **Access the URL**:
+    Ngrok will display a Forwarding URL (e.g., `https://xxxx-xx.ngrok-free.app`). use this URL to access the app from any device.
+
+**Note**:
+- The free version of ngrok has session limits.
+- Features like microphone access require HTTPS, which ngrok provides automatically.
