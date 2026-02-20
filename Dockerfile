@@ -13,7 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
 COPY src ./src
-COPY data ./data
 
 # Set environment
 ENV PYTHONPATH=/app/src

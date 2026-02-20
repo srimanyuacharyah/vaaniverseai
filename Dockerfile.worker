@@ -1,10 +1,24 @@
 FROM python:3.11-slim
+
 WORKDIR /app
+
+# Install system dependencies (ffmpeg for audio processing)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 COPY requirements.txt ./
-# Install worker extras (RQ + Redis client)
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir rq redis
+
+# Copy application source
 COPY src ./src
-EXPOSE 8000
-# Default command is the RQ worker; compose overrides as needed
-CMD ["rq", "worker"]
+
+# Set environment
+ENV PYTHONPATH=/app/src
+ENV VAANIVERSE_DB=/tmp/vaaniverse.db
+ENV VAANIVERSE_DATA_DIR=/tmp/data
+
+# Default command is the RQ worker; ensure data directory exists
+CMD ["sh", "-c", "mkdir -p /tmp/data && rq worker --url redis://${REDIS_URL:-redis://redis:6379}"]
